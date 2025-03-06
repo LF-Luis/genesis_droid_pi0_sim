@@ -21,16 +21,15 @@ Current versions:
 """
 rsync -avz -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/pick_up_bottle.py" \
-    ubuntu@ec2-54-144-36-74.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/pick_up_bottle.py
+    ubuntu@ec2-3-89-5-220.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/pick_up_bottle.py
 
-python pick_up_bottle.py --debug
-python pick_up_bottle.py --model fast --debug
+python pick_up_bottle.py
+python pick_up_bottle.py --model fast
 """
 
 
 parser = argparse.ArgumentParser(description="OpenPI + Genesis: Franka picks up a bottle")
 parser.add_argument("--model", choices=["fast", "diffusion"], default="fast")
-parser.add_argument("--debug", action="store_true", help="shows camera feeds in real-time")
 args = parser.parse_args()
 
 if args.model == "fast":
@@ -65,7 +64,7 @@ scene = gs.Scene(
         max_FPS=60,
     ),
     sim_options=gs.options.SimOptions(dt=0.01),   # simulation time-step 10ms
-    vis_options=gs.options.VisOptions(show_cameras=False),  # (show_cameras could be True for debugging)
+    vis_options=gs.options.VisOptions(show_cameras=True),  # (show_cameras could be True for debugging)
     renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
 )
 
@@ -94,7 +93,7 @@ ext_camera = scene.add_camera(
     pos=(0.5, -0.8, 0.4),    # position slightly in front of robot and above
     lookat=(0.5, 0.0, 0.0),  # look at the bottle on the plane
     fov=60,
-    GUI=args.debug          # if debug, open a window for this camera feed
+    GUI=True
 )
 # Wrist camera: will be attached to the robot's wrist (end-effector) by updating its pose each step
 wrist_camera = scene.add_camera(
@@ -102,13 +101,25 @@ wrist_camera = scene.add_camera(
     pos=(0.0, 0.0, 0.0),    # initial pose (will be updated dynamically)
     lookat=(0.0, 0.0, 0.0),
     fov=70,
-    GUI=args.debug          # open window if debug enabled
+    GUI=True
 )
-
 
 
 # Build the scene to finalize loading of entities
 scene.build()
+
+
+
+for step in range(1_000):
+    scene.step()  # advance the simulation
+    # Update camera views
+    ext_camera.render()
+    wrist_camera.render()
+    cv2.waitKey(1)  # allow OpenCV to process the draw events
+
+
+
+
 
 # Define the robot joint indices for control (7 arm joints + 2 finger joints)
 jnt_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7",
@@ -123,6 +134,15 @@ franka.set_dofs_kv(np.array([450, 450, 350, 350, 200, 200, 200, 10, 10]), dofs_i
 for _ in range(50):
     scene.step()
 
+
+
+scene.build()
+for step in range(1_000):
+    scene.step()  # advance the simulation
+    # Update camera views
+    ext_camera.render()
+    wrist_camera.render()
+    cv2.waitKey(1)  # allow OpenCV to process the draw events
 
 
 
@@ -157,125 +177,19 @@ task_prompt = "pick up the bottle"
 print("Starting control loop. Close the viewer window or press Ctrl+C to stop.")
 # Main control loop
 done = False
-while not done:
-    # 1. Capture observations from cameras
-    # Update wrist camera pose to follow the gripper's current pose
+try:
+    while not done:
+        # 1. Capture observations from cameras
+        # Update wrist camera pose to follow the gripper's current pose
 
-    hand_pos = wrist_link.get_pos()
-    hand_quat = wrist_link.get_quat()
-
-    print(f">>>>>>>>>> hand_pos: {hand_pos} | hand_quat: {hand_quat}")
-
-    # Compute camera position slightly behind the gripper and orientation looking forward from gripper
-    offset_back = rotate_vector(hand_quat, torch.tensor([0, 0, -0.1], device="cuda"))   # 10cm behind the hand in its local frame
-    offset_fwd  = rotate_vector(hand_quat, torch.tensor([0, 0,  0.2], device="cuda"))   # 20cm in front of the hand
-    cam_pos = hand_pos + offset_back
-    cam_target = hand_pos + offset_fwd
-
-    cam_pos = cam_pos.cpu().numpy()
-    cam_target = cam_target.cpu().numpy()
-
-    wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
-    # Render the camera images (RGB only)
-    img_ext = ext_camera.render()        # shape: (H, W, 3) uint8
-    img_wrist = wrist_camera.render()
-    # (If debug mode, the above render calls also update the GUI windows)
-
-    # 2. Prepare OpenPI input and infer action
-    # Get the current joint positions and gripper position
-    joint_positions = franka.get_dofs_position(dofs_idx[:7])  # First 7 DOFs are the arm joints
-    gripper_position = franka.get_dofs_position(dofs_idx[7:8])  # 8th DOF is the first finger joint
-
-    # Convert CUDA tensors to numpy arrays
-    if torch.is_tensor(joint_positions):
-        joint_positions = joint_positions.cpu().numpy()
-    if torch.is_tensor(gripper_position):
-        gripper_position = gripper_position.cpu().numpy()
-
-    # Ensure images are in correct format (H, W, 3) uint8
-    if isinstance(img_ext, torch.Tensor):
-        img_ext = img_ext.cpu().numpy()
-    if isinstance(img_wrist, torch.Tensor):
-        img_wrist = img_wrist.cpu().numpy()
-
-    # Handle case where images are returned as tuples
-    if isinstance(img_ext, tuple):
-        img_ext = img_ext[0]  # Extract the image data from the tuple
-    if isinstance(img_wrist, tuple):
-        img_wrist = img_wrist[0]  # Extract the image data from the tuple
-
-    # Ensure images are uint8 and in range [0, 255]
-    if img_ext.dtype != np.uint8:
-        img_ext = (img_ext * 255).astype(np.uint8)
-    if img_wrist.dtype != np.uint8:
-        img_wrist = (img_wrist * 255).astype(np.uint8)
-
-    # Ensure images are in (H, W, 3) format
-    if img_ext.shape[-1] != 3:
-        img_ext = np.transpose(img_ext, (1, 2, 0))
-    if img_wrist.shape[-1] != 3:
-        img_wrist = np.transpose(img_wrist, (1, 2, 0))
-
-    obs = {
-        "observation/exterior_image_1_left": img_ext,
-        "observation/wrist_image_left": img_wrist,
-        "observation/joint_position": joint_positions,
-        "observation/gripper_position": gripper_position,
-        "prompt": task_prompt
-    }
-    result = policy.infer(obs)
-
-    # The policy outputs a dictionary; extract the actions
-    action_chunk = result["actions"]
-    # Convert to numpy array for processing
-    if isinstance(action_chunk, np.ndarray):
-        action = action_chunk
-    else:
-        try:
-            action = np.array(action_chunk)
-        except:
-            action = np.array(action_chunk.detach().cpu())  # handle torch tensor if needed
-
-    # Print debug information about action shape
-    print(f"Debug: Action shape: {action.shape}, DOFs length: {len(dofs_idx)}")
-    print(f"Debug: Action data: {action}")
-    print(f"Debug: DOFs indices: {dofs_idx}")
-
-    # If the model produced a sequence of actions, take the first action for this step
-    if action.ndim > 1:
-        action = action[0]
-        print(f"Debug: After taking first action: {action.shape}")
-
-    # The policy outputs 8 values (7 for arm joints, 1 for gripper)
-    # But the robot has 9 DOFs (7 for arm joints, 2 for finger joints)
-    # Handle this by duplicating the gripper action for both finger joints
-    if action.shape[0] == 8 and len(dofs_idx) == 9:
-        arm_action = action[:7]  # First 7 values for arm joints
-        gripper_action = action[7]  # 8th value for gripper
-
-        # Create a 9-dimensional action with the gripper action duplicated
-        full_action = np.zeros(9)
-        full_action[:7] = arm_action  # Copy arm actions
-        full_action[7:9] = gripper_action  # Same gripper action for both fingers
-
-        action = full_action
-        print(f"Debug: Expanded action shape: {action.shape}")
-        print(f"Debug: Expanded action data: {action}")
-
-    action = action.astype(float)
-
-    # 3. Apply the action to the robot (position control for each DoF)
-    franka.control_dofs_position(action, dofs_idx)
-
-    # 4. Step the simulation forward a few steps to execute the action
-    control_steps = 5  # number of simulation sub-steps per action
-    for i in range(control_steps):
-        scene.step()
-        # Continuously update wrist cam to follow the moving hand
         hand_pos = wrist_link.get_pos()
         hand_quat = wrist_link.get_quat()
-        offset_back = rotate_vector(hand_quat, torch.tensor([0, 0, -0.1], device="cuda"))
-        offset_fwd  = rotate_vector(hand_quat, torch.tensor([0, 0,  0.2], device="cuda"))
+
+        print(f">>>>>>>>>> hand_pos: {hand_pos} | hand_quat: {hand_quat}")
+
+        # Compute camera position slightly behind the gripper and orientation looking forward from gripper
+        offset_back = rotate_vector(hand_quat, torch.tensor([0, 0, -0.1], device="cuda"))   # 10cm behind the hand in its local frame
+        offset_fwd  = rotate_vector(hand_quat, torch.tensor([0, 0,  0.2], device="cuda"))   # 20cm in front of the hand
         cam_pos = hand_pos + offset_back
         cam_target = hand_pos + offset_fwd
 
@@ -283,7 +197,113 @@ while not done:
         cam_target = cam_target.cpu().numpy()
 
         wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
-        if args.debug:
+        # Render the camera images (RGB only)
+        img_ext = ext_camera.render()        # shape: (H, W, 3) uint8
+        img_wrist = wrist_camera.render()
+
+        # 2. Prepare OpenPI input and infer action
+        # Get the current joint positions and gripper position
+        joint_positions = franka.get_dofs_position(dofs_idx[:7])  # First 7 DOFs are the arm joints
+        gripper_position = franka.get_dofs_position(dofs_idx[7:8])  # 8th DOF is the first finger joint
+
+        # Convert CUDA tensors to numpy arrays
+        if torch.is_tensor(joint_positions):
+            joint_positions = joint_positions.cpu().numpy()
+        if torch.is_tensor(gripper_position):
+            gripper_position = gripper_position.cpu().numpy()
+
+        # Ensure images are in correct format (H, W, 3) uint8
+        if isinstance(img_ext, torch.Tensor):
+            img_ext = img_ext.cpu().numpy()
+        if isinstance(img_wrist, torch.Tensor):
+            img_wrist = img_wrist.cpu().numpy()
+
+        # Handle case where images are returned as tuples
+        if isinstance(img_ext, tuple):
+            img_ext = img_ext[0]  # Extract the image data from the tuple
+        if isinstance(img_wrist, tuple):
+            img_wrist = img_wrist[0]  # Extract the image data from the tuple
+
+        # Ensure images are uint8 and in range [0, 255]
+        if img_ext.dtype != np.uint8:
+            img_ext = (img_ext * 255).astype(np.uint8)
+        if img_wrist.dtype != np.uint8:
+            img_wrist = (img_wrist * 255).astype(np.uint8)
+
+        # Ensure images are in (H, W, 3) format
+        if img_ext.shape[-1] != 3:
+            img_ext = np.transpose(img_ext, (1, 2, 0))
+        if img_wrist.shape[-1] != 3:
+            img_wrist = np.transpose(img_wrist, (1, 2, 0))
+
+        obs = {
+            "observation/exterior_image_1_left": img_ext,
+            "observation/wrist_image_left": img_wrist,
+            "observation/joint_position": joint_positions,
+            "observation/gripper_position": gripper_position,
+            "prompt": task_prompt
+        }
+        result = policy.infer(obs)
+
+        # The policy outputs a dictionary; extract the actions
+        action_chunk = result["actions"]
+        # Convert to numpy array for processing
+        if isinstance(action_chunk, np.ndarray):
+            action = action_chunk
+        else:
+            try:
+                action = np.array(action_chunk)
+            except:
+                action = np.array(action_chunk.detach().cpu())  # handle torch tensor if needed
+
+        # Print debug information about action shape
+        print(f"Debug: Action shape: {action.shape}, DOFs length: {len(dofs_idx)}")
+        print(f"Debug: Action data: {action}")
+        print(f"Debug: DOFs indices: {dofs_idx}")
+
+        # If the model produced a sequence of actions, take the first action for this step
+        if action.ndim > 1:
+            action = action[0]
+            print(f"Debug: After taking first action: {action.shape}")
+
+        # The policy outputs 8 values (7 for arm joints, 1 for gripper)
+        # But the robot has 9 DOFs (7 for arm joints, 2 for finger joints)
+        # Handle this by duplicating the gripper action for both finger joints
+        if action.shape[0] == 8 and len(dofs_idx) == 9:
+            arm_action = action[:7]  # First 7 values for arm joints
+            gripper_action = action[7]  # 8th value for gripper
+
+            # Create a 9-dimensional action with the gripper action duplicated
+            full_action = np.zeros(9)
+            full_action[:7] = arm_action  # Copy arm actions
+            full_action[7:9] = gripper_action  # Same gripper action for both fingers
+
+            action = full_action
+            print(f"Debug: Expanded action shape: {action.shape}")
+            print(f"Debug: Expanded action data: {action}")
+
+        action = action.astype(float)
+
+        # 3. Apply the action to the robot (position control for each DoF)
+        franka.control_dofs_position(action, dofs_idx)
+
+        # 4. Step the simulation forward a few steps to execute the action
+        control_steps = 5  # number of simulation sub-steps per action
+        for i in range(control_steps):
+            scene.step()
+            # Continuously update wrist cam to follow the moving hand
+            hand_pos = wrist_link.get_pos()
+            hand_quat = wrist_link.get_quat()
+            offset_back = rotate_vector(hand_quat, torch.tensor([0, 0, -0.1], device="cuda"))
+            offset_fwd  = rotate_vector(hand_quat, torch.tensor([0, 0,  0.2], device="cuda"))
+            cam_pos = hand_pos + offset_back
+            cam_target = hand_pos + offset_fwd
+
+            cam_pos = cam_pos.cpu().numpy()
+            cam_target = cam_target.cpu().numpy()
+
+            wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
+
             ext_camera.render()
             wrist_camera.render()
             # Small delay to update display
@@ -293,9 +313,22 @@ while not done:
             except:
                 pass
 
-    # 5. Check if the bottle is lifted (success condition)
-    bottle_pos = bottle.get_pos()  # get bottle's center position
-    if bottle_pos[2] > 0.2:  # if the bottle's height > 20cm (adjust threshold as needed)
-        print("Bottle picked up successfully!")
-        done = True
+        # 5. Check if the bottle is lifted (success condition)
+        bottle_pos = bottle.get_pos()  # get bottle's center position
+        if bottle_pos[2] > 0.2:  # if the bottle's height > 20cm (adjust threshold as needed)
+            print("Bottle picked up successfully!")
+            done = True
+
+except KeyboardInterrupt:
+    print("Simulation interrupted by user.")
+    # Perform any necessary cleanup here
+    # For example, you might want to save the current state, close files, etc.
+
+except Exception as e:
+    print(f"An error occurred: {e}")
+    # Handle other exceptions as needed
+
+finally:
+    print("Exiting simulation.")
+    # Perform any final cleanup here
 
