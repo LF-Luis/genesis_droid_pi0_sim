@@ -1,23 +1,32 @@
-from contextlib import contextmanager
 import time
+import argparse
 
-@contextmanager
-def timer(section_name):
-    start = time.perf_counter()
-    yield
-    end = time.perf_counter()
-    print(f"   >> >> >> '{section_name}' took {end - start:.6f} seconds")
+import cv2
+import numpy as np
+import torch
+import genesis as gs
+from openpi.shared import download
 
+# #TODO: DEBUG -- run before "from openpi.policies import policy_config" for now
+print("A")
+# Prime CV
+image = np.zeros((300, 300, 3), dtype=np.uint8)
+image[:] = (0, 255, 0)
+print("A.1")
+cv2.imshow("Test Window 1", image)
+print("B")
+for _ in range(3):
+    cv2.waitKey(1)
+    time.sleep(1)
+print("C")
+time.sleep(1)
+cv2.destroyAllWindows()
+time.sleep(1)
+print("Done priming CV")
+print("D")
 
-with timer("Imports"):  # Takes 18.666752 seconds
-    import time
-    import argparse
-    import cv2
-    import numpy as np
-    import torch
-    import genesis as gs
-    from openpi_client import image_tools
-    from openpi_client import websocket_client_policy
+from openpi.policies import policy_config
+from openpi.training import config as openpi_config
 
 """
 POC: Script to pick up a bottle using Franka Panda robot arm in Genesis Sim, being driven by OpenPI model.
@@ -32,116 +41,142 @@ Current versions:
 """
 rsync -avz -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/pick_up_bottle.py" \
-    ubuntu@ec2-184-73-52-209.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/pick_up_bottle.py
+    ubuntu@ec2-54-88-23-96.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/pick_up_bottle.py
 
 python pick_up_bottle.py
 python pick_up_bottle.py --model fast
 """
-########################################
-# Setup Params
-########################################
-COMPILE_KERNELS = True  # Set False only for debugging scene layout
-########################################
+
+print("will start")
+
+
+parser = argparse.ArgumentParser(description="OpenPI + Genesis: Franka picks up a bottle")
+parser.add_argument("--model", choices=["fast", "diffusion"], default="fast")
+args = parser.parse_args()
 
 
 
+if args.model == "fast":
+    # Autoregressive π0-FAST-DROID model
+    model_name = "pi0_fast_droid"
+else:
+    # Diffusion π0-DROID model
+    model_name = "pi0_droid"
 
-with timer("create policy"):  # takes 172.262329 seconds -> down 0.003269 seconds
-    """
-    # Start model server
-    # pi0_fast_droid: Autoregressive π0-FAST-DROID model
-    # pi0_droid: Diffusion π0-DROID model
-    uv run scripts/serve_policy.py policy:checkpoint \
-        --policy.config=pi0_fast_droid \
-        --policy.dir=s3://openpi-assets/checkpoints/pi0_fast_droid
-    """
-    pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
+print(f"model_name: {model_name}")
 
-with timer("gs.init"):
-    # Initialize Genesis (use GPU backend if available for faster physics & rendering)
-    gs.init(backend=gs.gpu)
+# Load the OpenPI model configuration and download the checkpoint
+pi_config = openpi_config.get_config(model_name)
+checkpoint_dir = download.maybe_download(f"s3://openpi-assets/checkpoints/{model_name}")
+print("Done downloading model.")
 
-with timer("setup scene"):  # takes 29.097971 seconds
-    # Set up the simulation scene with a viewer
-    scene = gs.Scene(
-        show_viewer=True,
-        viewer_options=gs.options.ViewerOptions(
-            res=(1280, 720),
-            camera_pos=(0.8, -1.0, 0.5),   # position the viewer camera behind and above the robot
-            camera_lookat=(0.5, 0.0, 0.2), # look at the area where the bottle is expected
-            camera_fov=60,
-            max_FPS=60,
-        ),
-        sim_options=gs.options.SimOptions(dt=0.01),   # simulation time-step 10ms
-        vis_options=gs.options.VisOptions(show_cameras=True),  # (show_cameras could be True for debugging)
-        renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
-    )
+# Create the policy object from the config and checkpoint
+policy = policy_config.create_trained_policy(pi_config, checkpoint_dir)
+print(f"Loaded OpenPI model '{model_name}' successfully.")
 
-with timer("add items to scene"):
-    # Add a ground plane and the Franka Panda robot to the scene
-    plane = scene.add_entity(gs.morphs.Plane())
-    franka = scene.add_entity(gs.morphs.MJCF(file="xml/franka_emika_panda/panda.xml", pos=(0, 0, 0)))
+# Initialize Genesis (use GPU backend if available for faster physics & rendering)
+gs.init(backend=gs.gpu)
 
-    # Add the bottle object to the scene
-    bottle = scene.add_entity(
-        material=gs.materials.Rigid(rho=300),
-        morph=gs.morphs.URDF(
-            file="urdf/3763/mobility_vhacd.urdf",
-            scale=0.09,
-            pos=(0.5, 0.0, 0.1),     # place bottle in front of robot, slightly above ground
-            # pos=(0.65, 0.0, 0.036),
-            euler=(0, 90, 0),
-        ),
-    )
+# Set up the simulation scene with a viewer
+scene = gs.Scene(
+    show_viewer=True,
+    viewer_options=gs.options.ViewerOptions(
+        res=(1280, 720),
+        camera_pos=(0.8, -1.0, 0.5),   # position the viewer camera behind and above the robot
+        camera_lookat=(0.5, 0.0, 0.2), # look at the area where the bottle is expected
+        camera_fov=60,
+        max_FPS=60,
+    ),
+    sim_options=gs.options.SimOptions(dt=0.01),   # simulation time-step 10ms
+    vis_options=gs.options.VisOptions(show_cameras=True),  # (show_cameras could be True for debugging)
+    renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
+)
 
-    # Set up cameras for external view and wrist view
-    cam_res = (320, 180)  # resolution similar to OpenPI training data
-    # External camera: static position (e.g., above and in front of the robot, looking down at table)
-    ext_camera = scene.add_camera(
-        res=cam_res,
-        pos=(0.5, -0.8, 0.4),    # position slightly in front of robot and above
-        lookat=(0.5, 0.0, 0.0),  # look at the bottle on the plane
-        fov=60,
-        GUI=True
-    )
-    # Wrist camera: will be attached to the robot's wrist (end-effector) by updating its pose each step
-    wrist_camera = scene.add_camera(
-        res=cam_res,
-        pos=(0.0, 0.0, 0.0),    # initial pose (will be updated dynamically)
-        lookat=(0.0, 0.0, 0.0),
-        fov=70,
-        GUI=True
-    )
+# Add a ground plane and the Franka Panda robot to the scene
+plane = scene.add_entity(gs.morphs.Plane())
+franka = scene.add_entity(gs.morphs.MJCF(file="xml/franka_emika_panda/panda.xml", pos=(0, 0, 0)))
 
-with timer("build scene"):  # takes 17.520714 seconds
-    # Build the scene to finalize loading of entities
+# Add the bottle object to the scene
+bottle = scene.add_entity(
+    material=gs.materials.Rigid(rho=300),
+    morph=gs.morphs.URDF(
+        file="urdf/3763/mobility_vhacd.urdf",
+        scale=0.09,
+        pos=(0.5, 0.0, 0.1),     # place bottle in front of robot, slightly above ground
+        # pos=(0.65, 0.0, 0.036),
+        euler=(0, 90, 0),
+    ),
+)
 
-    compile_kernels = COMPILE_KERNELS  # Set to False when debugging scene layout
-    scene.build(
-        compile_kernels = compile_kernels,
-    )
 
-with timer("define joints and priming"):
-    # Define the robot joint indices for control (7 arm joints + 2 finger joints)
-    jnt_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7",
-                "finger_joint1", "finger_joint2"]
-    dofs_idx = [franka.get_joint(name).dof_idx_local for name in jnt_names]
+# Set up cameras for external view and wrist view
+cam_res = (320, 180)  # resolution similar to OpenPI training data
+# External camera: static position (e.g., above and in front of the robot, looking down at table)
+ext_camera = scene.add_camera(
+    res=cam_res,
+    pos=(0.5, -0.8, 0.4),    # position slightly in front of robot and above
+    lookat=(0.5, 0.0, 0.0),  # look at the bottle on the plane
+    fov=60,
+    GUI=True
+)
+# Wrist camera: will be attached to the robot's wrist (end-effector) by updating its pose each step
+wrist_camera = scene.add_camera(
+    res=cam_res,
+    pos=(0.0, 0.0, 0.0),    # initial pose (will be updated dynamically)
+    lookat=(0.0, 0.0, 0.0),
+    fov=70,
+    GUI=True
+)
 
-    # Optionally, set PD gains for smoother control (using values from Genesis example)
-    franka.set_dofs_kp(np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 100, 100]), dofs_idx)
-    franka.set_dofs_kv(np.array([450, 450, 350, 350, 200, 200, 200, 10, 10]), dofs_idx)
 
-    # After adding the bottle, step the simulation a few times to let it drop onto the plane
-    for _ in range(50):
-        scene.step()
+# Build the scene to finalize loading of entities
+scene.build()
+
+
+print("LF_DEBUG: CV warmup 2 ----")
+time.sleep(1)
+cv2.waitKey(3000)
+cv2.destroyAllWindows()
+time.sleep(1)
+print("LF_DEBUG: Done CV warmup 2 ----")
+
+
+# Define the robot joint indices for control (7 arm joints + 2 finger joints)
+jnt_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7",
+             "finger_joint1", "finger_joint2"]
+dofs_idx = [franka.get_joint(name).dof_idx_local for name in jnt_names]
+
+# Optionally, set PD gains for smoother control (using values from Genesis example)
+franka.set_dofs_kp(np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 100, 100]), dofs_idx)
+franka.set_dofs_kv(np.array([450, 450, 350, 350, 200, 200, 200, 10, 10]), dofs_idx)
+
+# After adding the bottle, step the simulation a few times to let it drop onto the plane
+for _ in range(50):
+    scene.step()
+
+
+####################################
+####################################
+
+print("LF_DEBUG: About to show debug cam again----")
+
+for step in range(50):
+    scene.step()  # advance the simulation
+    # Update camera views
+    ext_camera.render()
+    wrist_camera.render()
+    cv2.waitKey(1)  # allow OpenCV to process the draw events
+
+print("LF_DEBUG: Done showing debug cam again----")
+
 
 def rotate_vector(quat, vec):
     # Ensure inputs are tensors
     if not isinstance(quat, torch.Tensor):
-        print(f"WARN: rotate_vector: quat {quat} is not Tensor!!!")
+        print(f"rotate_vector: quat {quat} is not Tensor!!!")
         quat = torch.tensor(quat, dtype=torch.float32)
     if not isinstance(vec, torch.Tensor):
-        print(f"WARN: rotate_vector: vec {vec} is not Tensor!!!")
+        print(f"rotate_vector: vec {vec} is not Tensor!!!")
         vec = torch.tensor(vec, dtype=torch.float32)
 
     w, x, y, z = quat
@@ -152,25 +187,15 @@ def rotate_vector(quat, vec):
     rot_mat = torch.stack([row1, row2, row3])
     return torch.matmul(rot_mat, vec)
 
-with timer("get EF"):
-    # Get reference to the robot's end-effector link (hand) for camera attachment
-    wrist_link = franka.get_link("hand")  # 'panda_hand' is the wrist link in the MJCF model
+
+
+
+
+# Get reference to the robot's end-effector link (hand) for camera attachment
+wrist_link = franka.get_link("hand")  # 'panda_hand' is the wrist link in the MJCF model
 
 # Define a text prompt for the model
 task_prompt = "pick up the bottle"
-
-
-if not COMPILE_KERNELS:
-    try:
-        while True:
-            pass
-    except KeyboardInterrupt:
-        print("Simulation interrupted by user.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        import sys; sys.exit()
-
 
 print("Starting control loop. Close the viewer window or press Ctrl+C to stop.")
 # Main control loop
@@ -234,24 +259,17 @@ try:
         if img_wrist.shape[-1] != 3:
             img_wrist = np.transpose(img_wrist, (1, 2, 0))
 
-        # Resize images on the client side to minimize bandwidth, latency, and match training routines.
-        # Always return images in uint8 format.
-        # The typical resize_size for pre-trained pi0 models is 224.
-        # Note that the proprioceptive `state` can be passed unnormalized, normalization will be handled on the server side.
-        observation = {
-            "observation/exterior_image_1_left": image_tools.convert_to_uint8(image_tools.resize_with_pad(img_ext, 224, 224)),
-            "observation/wrist_image_left": image_tools.convert_to_uint8(image_tools.resize_with_pad(img_wrist, 224, 224)),
+        obs = {
+            "observation/exterior_image_1_left": img_ext,
+            "observation/wrist_image_left": img_wrist,
             "observation/joint_position": joint_positions,
             "observation/gripper_position": gripper_position,
-            "prompt": task_prompt,
+            "prompt": task_prompt
         }
+        result = policy.infer(obs)
 
-        try:
-            action_chunk = pi0_model_client.infer(observation)["actions"]
-        except Exception as e:
-            print(f"Error running inference. Error: {e}")
-            raise
-
+        # The policy outputs a dictionary; extract the actions
+        action_chunk = result["actions"]
         # Convert to numpy array for processing
         if isinstance(action_chunk, np.ndarray):
             action = action_chunk
@@ -330,3 +348,4 @@ except Exception as e:
     print(f"An error occurred: {e}")
 finally:
     print("Exiting simulation.")
+
