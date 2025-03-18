@@ -1,67 +1,34 @@
-from contextlib import contextmanager
-import time
+import os
+import sys
 
-@contextmanager
-def timer(section_name):
-    start = time.perf_counter()
-    yield
-    end = time.perf_counter()
-    print(f"   >> >> >> '{section_name}' took {end - start:.6f} seconds")
+import cv2
+import torch
+import numpy as np
+import genesis as gs
+from openpi_client import image_tools
+from openpi_client import websocket_client_policy
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from utils.perf_timer import perf_timer
+from franka_manager import FrankaManager
+from genesis_utils.cam_debug import CamDebugLayout
 
-with timer("Imports"):  # Takes 18.666752 seconds
-    import time
-    import argparse
-    import cv2
-    import numpy as np
-    import torch
-    import genesis as gs
-    from openpi_client import image_tools
-    from openpi_client import websocket_client_policy
 
 """
-POC: Script to pick up a bottle using Franka Panda robot arm in Genesis Sim, being driven by OpenPI model.
-
-Current versions:
-    Genesis:
-    https://github.com/Genesis-Embodied-AI/Genesis/commit/5cc3d5606c3c1e08eb3c628957e76e8e8512ae13
-    OpenPi:
-    https://github.com/Physical-Intelligence/openpi/commit/92b10824421d6d810eb1e398330acd79dc7cd934
+Script to pick up a bottle using Franka Panda robot arm in Genesis Sim, being driven by OpenPI model.
 """
 
-"""
-rsync -avz -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
-    "$PWD/pick_up_bottle.py" \
-    ubuntu@ec2-184-73-52-209.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/pick_up_bottle.py
-
-python pick_up_bottle.py
-python pick_up_bottle.py --model fast
-"""
-########################################
 # Setup Params
-########################################
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
-########################################
 
 
+# Initialize link to OpenPi model, locally hosted
+pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
 
+# Initialize Genesis
+gs.init(backend=gs.gpu)
 
-with timer("create policy"):  # takes 172.262329 seconds -> down 0.003269 seconds
-    """
-    # Start model server
-    # pi0_fast_droid: Autoregressive π0-FAST-DROID model
-    # pi0_droid: Diffusion π0-DROID model
-    uv run scripts/serve_policy.py policy:checkpoint \
-        --policy.config=pi0_fast_droid \
-        --policy.dir=s3://openpi-assets/checkpoints/pi0_fast_droid
-    """
-    pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
-
-with timer("gs.init"):
-    # Initialize Genesis (use GPU backend if available for faster physics & rendering)
-    gs.init(backend=gs.gpu)
-
-with timer("setup scene"):  # takes 29.097971 seconds
+with perf_timer("setup scene"):  # takes 29.097971 seconds
     # Set up the simulation scene with a viewer
     scene = gs.Scene(
         show_viewer=True,
@@ -73,14 +40,14 @@ with timer("setup scene"):  # takes 29.097971 seconds
             max_FPS=60,
         ),
         sim_options=gs.options.SimOptions(dt=0.01),   # simulation time-step 10ms
-        vis_options=gs.options.VisOptions(show_cameras=True),  # (show_cameras could be True for debugging)
+        vis_options=gs.options.VisOptions(show_cameras=False),  # (show_cameras could be True for debugging)
         renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
     )
 
-with timer("add items to scene"):
+with perf_timer("add items to scene"):
     # Add a ground plane and the Franka Panda robot to the scene
     plane = scene.add_entity(gs.morphs.Plane())
-    franka = scene.add_entity(gs.morphs.MJCF(file="xml/franka_emika_panda/panda.xml", pos=(0, 0, 0)))
+    franka_manager = FrankaManager(scene)
 
     # Add the bottle object to the scene
     bottle = scene.add_entity(
@@ -113,27 +80,23 @@ with timer("add items to scene"):
         GUI=True
     )
 
-with timer("build scene"):  # takes 17.520714 seconds
+with perf_timer("build scene"):  # takes 17.520714 seconds
     # Build the scene to finalize loading of entities
-
-    compile_kernels = COMPILE_KERNELS  # Set to False when debugging scene layout
     scene.build(
-        compile_kernels = compile_kernels,
+        compile_kernels = COMPILE_KERNELS,  # Set to False when debugging scene layout
     )
 
-with timer("define joints and priming"):
-    # Define the robot joint indices for control (7 arm joints + 2 finger joints)
-    jnt_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7",
-                "finger_joint1", "finger_joint2"]
-    dofs_idx = [franka.get_joint(name).dof_idx_local for name in jnt_names]
+# # After adding the bottle, step the simulation a few times to let it drop onto the plane
+# for _ in range(50):
+#     scene.step()
 
-    # Optionally, set PD gains for smoother control (using values from Genesis example)
-    franka.set_dofs_kp(np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 100, 100]), dofs_idx)
-    franka.set_dofs_kv(np.array([450, 450, 350, 350, 200, 200, 200, 10, 10]), dofs_idx)
 
-    # After adding the bottle, step the simulation a few times to let it drop onto the plane
-    for _ in range(50):
-        scene.step()
+franka_manager.set_to_init_pos()
+import IPython
+IPython.embed()
+
+
+
 
 def rotate_vector(quat, vec):
     # Ensure inputs are tensors
@@ -151,10 +114,6 @@ def rotate_vector(quat, vec):
     row3 = torch.stack([2*x*z - 2*w*y,     2*y*z + 2*w*x,     1 - 2*x*x - 2*y*y])
     rot_mat = torch.stack([row1, row2, row3])
     return torch.matmul(rot_mat, vec)
-
-with timer("get EF"):
-    # Get reference to the robot's end-effector link (hand) for camera attachment
-    wrist_link = franka.get_link("hand")  # 'panda_hand' is the wrist link in the MJCF model
 
 # Define a text prompt for the model
 task_prompt = "pick up the bottle"
@@ -180,8 +139,8 @@ try:
         # 1. Capture observations from cameras
         # Update wrist camera pose to follow the gripper's current pose
 
-        hand_pos = wrist_link.get_pos()
-        hand_quat = wrist_link.get_quat()
+        hand_pos = franka_manager.get_ee_pos()
+        hand_quat = franka_manager.get_ee_quat()
 
         print(f">>>>>>>>>> hand_pos: {hand_pos} | hand_quat: {hand_quat}")
 
@@ -199,10 +158,53 @@ try:
         img_ext = ext_camera.render()        # shape: (H, W, 3) uint8
         img_wrist = wrist_camera.render()
 
+
+        hand_pos = franka_manager.get_ee_pos()
+        hand_quat = franka_manager.get_ee_quat()
+        print(f"start wrist pos: {hand_pos} | quat: {hand_quat}")
+        print(f"start wrist type pos: {type(hand_pos)} | quat: {type(hand_quat)}")
+
+        def set_wrist(hand_pos, hand_quat):
+            """
+            Set the camera pose using the hand's position and orientation.
+            Offsets the camera 10cm in front of the hand to avoid occlusion.
+
+            hand_pos: numpy array or torch tensor [x, y, z]
+            hand_quat: numpy array or torch tensor [w, x, y, z] (in wxyz format)
+            """
+            # Convert to numpy if they're torch tensors
+            if torch.is_tensor(hand_pos):
+                hand_pos = hand_pos.cpu().numpy()
+            if torch.is_tensor(hand_quat):
+                hand_quat = hand_quat.cpu().numpy()
+
+            # Calculate position 10cm in front of the hand
+            # We use the hand's orientation to determine what "forward" means
+            forward_offset = gs.utils.geom.transform_by_quat(np.array([0, 0, 0.1]), hand_quat)
+            camera_pos = hand_pos + forward_offset
+
+            # Create transform matrix using the offset position and hand's orientation
+            transform = gs.utils.geom.trans_quat_to_T(camera_pos, hand_quat)
+
+            # Set the camera pose
+            wrist_camera.set_pose(transform=transform)
+            wrist_camera.render()
+
+        set_wrist(hand_pos, hand_quat)
+        w_d = CamDebugLayout(wrist_camera)
+
+        # enter IPython's interactive mode
+        cv2.waitKey(1)
+        import IPython
+        IPython.embed()
+
+
+
         # 2. Prepare OpenPI input and infer action
-        # Get the current joint positions and gripper position
-        joint_positions = franka.get_dofs_position(dofs_idx[:7])  # First 7 DOFs are the arm joints
-        gripper_position = franka.get_dofs_position(dofs_idx[7:8])  # 8th DOF is the first finger joint
+
+        # First 7 DOFs are the arm joints
+        # 8th DOF is the first finger joint
+        joint_positions, gripper_position = franka_manager.get_revolute_radians()
 
         # Convert CUDA tensors to numpy arrays
         if torch.is_tensor(joint_positions):
@@ -262,9 +264,9 @@ try:
                 action = np.array(action_chunk.detach().cpu())  # handle torch tensor if needed
 
         # Print debug information about action shape
-        print(f"Debug: Action shape: {action.shape}, DOFs length: {len(dofs_idx)}")
+        print(f"Debug: Action shape: {action.shape}, DOFs length: {len(franka_manager.dofs_idx)}")
         print(f"Debug: Action data: {action}")
-        print(f"Debug: DOFs indices: {dofs_idx}")
+        print(f"Debug: DOFs indices: {franka_manager.dofs_idx}")
 
         # If the model produced a sequence of actions, take the first action for this step
         if action.ndim > 1:
@@ -274,7 +276,7 @@ try:
         # The policy outputs 8 values (7 for arm joints, 1 for gripper)
         # But the robot has 9 DOFs (7 for arm joints, 2 for finger joints)
         # Handle this by duplicating the gripper action for both finger joints
-        if action.shape[0] == 8 and len(dofs_idx) == 9:
+        if action.shape[0] == 8 and len(franka_manager.dofs_idx) == 9:
             arm_action = action[:7]  # First 7 values for arm joints
             gripper_action = action[7]  # 8th value for gripper
 
@@ -290,15 +292,15 @@ try:
         action = action.astype(float)
 
         # 3. Apply the action to the robot (position control for each DoF)
-        franka.control_dofs_position(action, dofs_idx)
+        franka_manager.set_revolute_radians(action)
 
         # 4. Step the simulation forward a few steps to execute the action
         control_steps = 5  # number of simulation sub-steps per action
         for i in range(control_steps):
             scene.step()
             # Continuously update wrist cam to follow the moving hand
-            hand_pos = wrist_link.get_pos()
-            hand_quat = wrist_link.get_quat()
+            hand_pos = franka_manager.get_ee_pos()
+            hand_quat = franka_manager.get_ee_quat()
             offset_back = rotate_vector(hand_quat, torch.tensor([0, 0, -0.1], device="cuda"))
             offset_fwd  = rotate_vector(hand_quat, torch.tensor([0, 0,  0.2], device="cuda"))
             cam_pos = hand_pos + offset_back
@@ -313,7 +315,6 @@ try:
             wrist_camera.render()
             # Small delay to update display
             try:
-                import cv2
                 cv2.waitKey(1)
             except:
                 pass
