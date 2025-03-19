@@ -11,7 +11,8 @@ from openpi_client import websocket_client_policy
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils.perf_timer import perf_timer
 from franka_manager import FrankaManager
-from genesis_utils.cam_debug import CamDebugLayout
+from sim_utils.cam_debug import CamDebugLayout
+from sim_utils.transformations import rotate_vector
 
 
 """
@@ -86,49 +87,29 @@ with perf_timer("build scene"):  # takes 17.520714 seconds
         compile_kernels = COMPILE_KERNELS,  # Set to False when debugging scene layout
     )
 
-# # After adding the bottle, step the simulation a few times to let it drop onto the plane
-# for _ in range(50):
-#     scene.step()
 
 
 franka_manager.set_to_init_pos()
-import IPython
-IPython.embed()
 
 
 
+# try:
+#     import IPython
+#     IPython.embed()
+# except KeyboardInterrupt:
+#     print("Simulation interrupted by user.")
+# except Exception as e:
+#     print(f"An error occurred: {e}")
+# finally:
+#     import sys; sys.exit()
 
-def rotate_vector(quat, vec):
-    # Ensure inputs are tensors
-    if not isinstance(quat, torch.Tensor):
-        print(f"WARN: rotate_vector: quat {quat} is not Tensor!!!")
-        quat = torch.tensor(quat, dtype=torch.float32)
-    if not isinstance(vec, torch.Tensor):
-        print(f"WARN: rotate_vector: vec {vec} is not Tensor!!!")
-        vec = torch.tensor(vec, dtype=torch.float32)
 
-    w, x, y, z = quat
-    # Build the rotation matrix using torch.stack
-    row1 = torch.stack([1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z,     2*x*z + 2*w*y])
-    row2 = torch.stack([2*x*y + 2*w*z,     1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x])
-    row3 = torch.stack([2*x*z - 2*w*y,     2*y*z + 2*w*x,     1 - 2*x*x - 2*y*y])
-    rot_mat = torch.stack([row1, row2, row3])
-    return torch.matmul(rot_mat, vec)
+
 
 # Define a text prompt for the model
 task_prompt = "pick up the bottle"
 
 
-if not COMPILE_KERNELS:
-    try:
-        while True:
-            pass
-    except KeyboardInterrupt:
-        print("Simulation interrupted by user.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        import sys; sys.exit()
 
 
 print("Starting control loop. Close the viewer window or press Ctrl+C to stop.")
@@ -192,6 +173,8 @@ try:
 
         set_wrist(hand_pos, hand_quat)
         w_d = CamDebugLayout(wrist_camera)
+
+        # TODO: print cam pos and quat after every movement
 
         # enter IPython's interactive mode
         cv2.waitKey(1)

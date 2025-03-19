@@ -40,9 +40,14 @@ class FrankaManager:
         self._franka.set_dofs_force_range(FORCE_RANGES_LOWER, FORCE_RANGES_UPPER, self.dofs_idx)
 
     def set_to_init_pos(self):
+        """
+        Set control params and reset to an initial position.
+        """
         self._set_control_params()
-        # Set robot to initial position
+        # Teleport to position
         self._franka.set_dofs_position(HOME_POS, self.dofs_idx)
+        # Solve for position
+        self._franka.control_dofs_position(HOME_POS, self.dofs_idx)
 
         # Wait for stabilization
         print(f"Running {HOME_POS_STEPS} steps to stabilize at home position.")
@@ -56,6 +61,7 @@ class FrankaManager:
     def get_ee_quat(self):
         return self._end_effector.get_quat()
 
+    # FIXME: "get_revolute_radians" is a misnomer. Franka has 7 revolute joints and 2 prismatic joints in its gripper
     def get_revolute_radians(self):
         # Get the current joint and gripper revolute angles in radians
         joint_positions = self._franka.get_dofs_position(self.dofs_idx[:7])  # First 7 DOFs are the arm joints

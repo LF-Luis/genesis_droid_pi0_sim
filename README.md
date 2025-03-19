@@ -25,7 +25,9 @@ uv run scripts/serve_policy.py policy:checkpoint \
 ## Systems
 Copying to openpi dir, which is mounted inside of
 ```bash
-rsync -avz -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
+rsync -avz --progress \
+    --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
+    -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-54-90-223-115.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-54-198-113-161.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
 ```
