@@ -172,7 +172,7 @@ try:
             wrist_camera.render()
 
         set_wrist(hand_pos, hand_quat)
-        w_d = CamDebugLayout(wrist_camera)
+        w_d = CamDebugLayout(wrist_camera, verbose = True)
 
         # TODO: print cam pos and quat after every movement
 

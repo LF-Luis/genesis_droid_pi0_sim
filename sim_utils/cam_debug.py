@@ -4,7 +4,7 @@ import genesis as gs
 
 class CamDebugLayout:
 
-    def __init__(self, camera):
+    def __init__(self, camera, verbose = False):
         """
         Initialize camera debug layout with movement and rotation controls.
         Works with camera's current pose for all transformations.
@@ -13,6 +13,7 @@ class CamDebugLayout:
             camera: Genesis camera object to control
         """
         self._cam = camera
+        self._verbose = verbose
 
         # Define movement vectors in local coordinates
         self._directions = {
@@ -36,6 +37,10 @@ class CamDebugLayout:
     def roll(self, angle=10): self._rotate_camera('x', angle)
     def pitch(self, angle=10): self._rotate_camera('y', angle)
     def yaw(self, angle=10): self._rotate_camera('z', angle)
+
+    def _log_spatial_info(self):
+        if self._verbose:
+            print(f"pos: {self._cam.pos} \nlookat: {self._cam.lookat} \ntransform: {self._cam.transform} \nextrinsics: {self._cam.extrinsics}")
 
     def _move_camera(self, direction, distance):
         """
@@ -66,6 +71,8 @@ class CamDebugLayout:
         # Update camera
         self._cam.set_pose(transform=new_transform)
         self._cam.render()
+
+        self._log_spatial_info()
 
     def _rotate_camera(self, axis, angle_degrees):
         """
@@ -105,3 +112,5 @@ class CamDebugLayout:
         # Update camera
         self._cam.set_pose(transform=new_transform)
         self._cam.render()
+
+        self._log_spatial_info()
