@@ -12,7 +12,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils.perf_timer import perf_timer
 from franka_manager import FrankaManager
 from sim_utils.cam_debug import CamDebugLayout
-from sim_utils.transformations import rotate_vector
 
 
 """
@@ -24,7 +23,7 @@ COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
 
 # Initialize link to OpenPi model, locally hosted
-pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
+# pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
 
 # Initialize Genesis
 gs.init(backend=gs.gpu)
@@ -63,6 +62,7 @@ with perf_timer("add items to scene"):
     )
 
     # Set up cameras for external view and wrist view
+    # cam_res = (1280, 720)  # Zed mini at 60 fps (this is for the wrist cam)
     cam_res = (320, 180)  # resolution similar to OpenPI training data
     # External camera: static position (e.g., above and in front of the robot, looking down at table)
     ext_camera = scene.add_camera(
@@ -72,14 +72,8 @@ with perf_timer("add items to scene"):
         fov=60,
         GUI=True
     )
-    # Wrist camera: will be attached to the robot's wrist (end-effector) by updating its pose each step
-    wrist_camera = scene.add_camera(
-        res=cam_res,
-        pos=(0.0, 0.0, 0.0),    # initial pose (will be updated dynamically)
-        lookat=(0.0, 0.0, 0.0),
-        fov=70,
-        GUI=True
-    )
+
+    print(f"Intrinsics: \nexternal cam: \n{ext_camera.intrinsics}")
 
 with perf_timer("build scene"):  # takes 17.520714 seconds
     # Build the scene to finalize loading of entities
@@ -120,66 +114,116 @@ try:
         # 1. Capture observations from cameras
         # Update wrist camera pose to follow the gripper's current pose
 
-        hand_pos = franka_manager.get_ee_pos()
-        hand_quat = franka_manager.get_ee_quat()
+        wrist_pos = franka_manager.get_ee_pos()
+        wrist_quat = franka_manager.get_ee_quat()
+        print(f"start wrist pos: {wrist_pos} | quat: {wrist_quat}")
+        print(f"start wrist type pos: {type(wrist_pos)} | quat: {type(wrist_quat)}")
 
-        print(f">>>>>>>>>> hand_pos: {hand_pos} | hand_quat: {hand_quat}")
+        # # Compute camera position slightly behind the gripper and orientation looking forward from gripper
+        # offset_back = rotate_vector(wrist_quat, torch.tensor([0, 0, -0.1], device="cuda"))   # 10cm behind the hand in its local frame
+        # offset_fwd  = rotate_vector(wrist_quat, torch.tensor([0, 0,  0.2], device="cuda"))   # 20cm in front of the hand
+        # cam_pos = wrist_pos + offset_back
+        # cam_target = wrist_pos + offset_fwd
+        # cam_pos = cam_pos.cpu().numpy()
+        # cam_target = cam_target.cpu().numpy()
+        # _wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
 
-        # Compute camera position slightly behind the gripper and orientation looking forward from gripper
-        offset_back = rotate_vector(hand_quat, torch.tensor([0, 0, -0.1], device="cuda"))   # 10cm behind the hand in its local frame
-        offset_fwd  = rotate_vector(hand_quat, torch.tensor([0, 0,  0.2], device="cuda"))   # 20cm in front of the hand
-        cam_pos = hand_pos + offset_back
-        cam_target = hand_pos + offset_fwd
 
-        cam_pos = cam_pos.cpu().numpy()
-        cam_target = cam_target.cpu().numpy()
-
-        wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
         # Render the camera images (RGB only)
-        img_ext = ext_camera.render()        # shape: (H, W, 3) uint8
-        img_wrist = wrist_camera.render()
+        img_ext = ext_camera.render()  # shape: (H, W, 3) uint8
+        img_wrist = franka_manager.cam_render()
+        cv2.waitKey(1)
+
+        from sim_utils.transformations import get_camera_transform
+        from sim_utils.transformations import quaternion_multiply
+        import math
+
+        w_d = CamDebugLayout(franka_manager._wrist_camera, verbose = True)
+
+        def debug_wrist(offset_translation, offset_quaternion):
+            wrist_pos = franka_manager.get_ee_pos()
+            wrist_quat = franka_manager.get_ee_quat()
+            # offset_translation = torch.tensor([0.1, 0.0, 0.0], device=wrist_pos.device, dtype=wrist_pos.dtype)
+            # offset_quaternion = torch.tensor([0.0, 1.0, 0.0, 0.0], device=wrist_pos.device, dtype=wrist_pos.dtype)
+            offset_translation = torch.tensor(offset_translation, device=wrist_pos.device)
+            # offset_quaternion = torch.tensor(offset_quaternion, device=wrist_pos.device, dtype=wrist_pos.dtype)
+            T_camera = get_camera_transform(wrist_pos, wrist_quat, offset_translation, offset_quaternion)
+            print("Camera Transformation Matrix:\n", T_camera)
+
+            franka_manager._wrist_camera.set_pose(transform=T_camera.cpu().numpy())
+
+            print(f"_wrist_camera.pos(): {franka_manager._wrist_camera.pos}")
+            print(f"_wrist_camera.transform(): {franka_manager._wrist_camera.transform}")
+            _ = franka_manager._wrist_camera.render()
+
+        # Define the individual rotations.
+        # 180° rotation about x-axis: flip camera's z-axis.
+        q_x = torch.tensor([0.0, 1.0, 0.0, 0.0])  # [cos(pi/2), sin(pi/2), 0, 0]
+        # 90° rotation about z-axis.
+        angle_z = math.pi / 2
+        q_z = torch.tensor([math.cos(angle_z/2), 0.0, 0.0, math.sin(angle_z/2)])
+        # -20° rotation about y-axis.
+        angle_y = math.radians(-20)
+        q_y = torch.tensor([math.cos(angle_y/2), 0.0, math.sin(angle_y/2), 0.0])
+        # Combine rotations: apply q_x, then q_z, then q_y
+        offset_quaternion = quaternion_multiply(q_z, q_x)
+        offset_quaternion = quaternion_multiply(q_y, offset_quaternion)
+
+        # !! y_rot_offset(y_val = -20, offset = [0.11, 0.0, -0.04])
+
+        debug_wrist([0.11, 0.0, -0.04], offset_quaternion)
+
+        def steps(n=50):
+            for _ in range(n):
+                scene.step()
+                debug_wrist([0.11, 0.0, -0.04], offset_quaternion)
+                franka_manager._wrist_camera.render()
 
 
-        hand_pos = franka_manager.get_ee_pos()
-        hand_quat = franka_manager.get_ee_quat()
-        print(f"start wrist pos: {hand_pos} | quat: {hand_quat}")
-        print(f"start wrist type pos: {type(hand_pos)} | quat: {type(hand_quat)}")
+        from sim_utils.robot_debug import RobotDebug
+        rD = RobotDebug(franka_manager, scene, True)
 
-        def set_wrist(hand_pos, hand_quat):
-            """
-            Set the camera pose using the hand's position and orientation.
-            Offsets the camera 10cm in front of the hand to avoid occlusion.
 
-            hand_pos: numpy array or torch tensor [x, y, z]
-            hand_quat: numpy array or torch tensor [w, x, y, z] (in wxyz format)
-            """
-            # Convert to numpy if they're torch tensors
-            if torch.is_tensor(hand_pos):
-                hand_pos = hand_pos.cpu().numpy()
-            if torch.is_tensor(hand_quat):
-                hand_quat = hand_quat.cpu().numpy()
-
-            # Calculate position 10cm in front of the hand
-            # We use the hand's orientation to determine what "forward" means
-            forward_offset = gs.utils.geom.transform_by_quat(np.array([0, 0, 0.1]), hand_quat)
-            camera_pos = hand_pos + forward_offset
-
-            # Create transform matrix using the offset position and hand's orientation
-            transform = gs.utils.geom.trans_quat_to_T(camera_pos, hand_quat)
-
-            # Set the camera pose
-            wrist_camera.set_pose(transform=transform)
-            wrist_camera.render()
-
-        set_wrist(hand_pos, hand_quat)
-        w_d = CamDebugLayout(wrist_camera, verbose = True)
-
-        # TODO: print cam pos and quat after every movement
-
-        # enter IPython's interactive mode
+        # Enter IPython's interactive mode
         cv2.waitKey(1)
         import IPython
         IPython.embed()
+
+
+
+        # def set_wrist(wrist_pos, wrist_quat):
+        #     """
+        #     Set the camera pose using the hand's position and orientation.
+        #     Offsets the camera 10cm in front of the hand to avoid occlusion.
+
+        #     wrist_pos: numpy array or torch tensor [x, y, z]
+        #     wrist_quat: numpy array or torch tensor [w, x, y, z] (in wxyz format)
+        #     """
+        #     # Convert to numpy if they're torch tensors
+        #     if torch.is_tensor(wrist_pos):
+        #         wrist_pos = wrist_pos.cpu().numpy()
+        #     if torch.is_tensor(wrist_quat):
+        #         wrist_quat = wrist_quat.cpu().numpy()
+
+        #     # Calculate position 10cm in front of the hand
+        #     # We use the hand's orientation to determine what "forward" means
+        #     forward_offset = gs.utils.geom.transform_by_quat(np.array([0, 0, 0.1]), wrist_quat)
+        #     camera_pos = wrist_pos + forward_offset
+
+        #     # Create transform matrix using the offset position and hand's orientation
+        #     transform = gs.utils.geom.trans_quat_to_T(camera_pos, wrist_quat)
+
+        #     # Set the camera pose
+        #     _wrist_camera.set_pose(transform=transform)
+        #     _wrist_camera.render()
+
+        # # set_wrist(wrist_pos, wrist_quat)
+        # w_d = CamDebugLayout(_wrist_camera, verbose = True)
+
+        # # enter IPython's interactive mode
+        # cv2.waitKey(1)
+        # import IPython
+        # IPython.embed()
 
 
 
@@ -282,20 +326,20 @@ try:
         for i in range(control_steps):
             scene.step()
             # Continuously update wrist cam to follow the moving hand
-            hand_pos = franka_manager.get_ee_pos()
-            hand_quat = franka_manager.get_ee_quat()
-            offset_back = rotate_vector(hand_quat, torch.tensor([0, 0, -0.1], device="cuda"))
-            offset_fwd  = rotate_vector(hand_quat, torch.tensor([0, 0,  0.2], device="cuda"))
-            cam_pos = hand_pos + offset_back
-            cam_target = hand_pos + offset_fwd
+            wrist_pos = franka_manager.get_ee_pos()
+            wrist_quat = franka_manager.get_ee_quat()
+            offset_back = rotate_vector(wrist_quat, torch.tensor([0, 0, -0.1], device="cuda"))
+            offset_fwd  = rotate_vector(wrist_quat, torch.tensor([0, 0,  0.2], device="cuda"))
+            cam_pos = wrist_pos + offset_back
+            cam_target = wrist_pos + offset_fwd
 
             cam_pos = cam_pos.cpu().numpy()
             cam_target = cam_target.cpu().numpy()
 
-            wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
+            # _wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
 
             ext_camera.render()
-            wrist_camera.render()
+            # _wrist_camera.render()
             # Small delay to update display
             try:
                 cv2.waitKey(1)
