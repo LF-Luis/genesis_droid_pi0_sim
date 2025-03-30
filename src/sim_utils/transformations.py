@@ -66,9 +66,6 @@ def get_camera_transform(
     T_camera = T_wrist @ T_offset
     return T_camera
 
-
-
-
 def quaternion_multiply(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
     """
     Multiply two quaternions (scalar-first).

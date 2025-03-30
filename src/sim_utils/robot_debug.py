@@ -1,5 +1,5 @@
 import numpy as np
-from franka_manager import FrankaManager
+from src.sim_entities.franka_manager import FrankaManager
 
 class RobotDebug:
 

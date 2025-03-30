@@ -1,6 +1,3 @@
-import os
-import sys
-
 import cv2
 import torch
 import numpy as np
@@ -8,10 +5,9 @@ import genesis as gs
 from openpi_client import image_tools
 from openpi_client import websocket_client_policy
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from utils.perf_timer import perf_timer
-from franka_manager import FrankaManager
-from sim_utils.cam_debug import CamDebugLayout
+from src.utils.perf_timer import perf_timer
+from src.sim_entities.franka_manager import FrankaManager
+from src.sim_utils.cam_debug import CamDebugLayout
 
 
 """
