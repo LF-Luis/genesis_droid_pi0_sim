@@ -29,5 +29,11 @@ rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-23-22-190-34.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-54-89-119-17.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+```
+
+## Live CLI Debugger
+```python
+import IPython
+IPython.embed()
 ```

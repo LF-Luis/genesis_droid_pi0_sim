@@ -26,14 +26,17 @@ class FrankaManager:
 
         # Wrist camera will be attached to the robot's wrist
         self._wrist_camera = scene.add_camera(
+            pos=(0.0, 0.0, 0.0),    # initial pose (will be updated dynamically)
+            lookat=(0.0, 0.0, 0.0),
             res=CAM_RES,
             fov=CAM_FOV,
             GUI=True,
         )
-        self._cam_ee_pos_offset, self._cam_ee_rot_offset = get_wrist_cam_offset(self.get_ee_pos().device)
+        self._cam_ee_pos_offset, self._cam_ee_rot_offset = get_wrist_cam_offset(gs.device)
 
         print(f"Franka's DoF idx: {self.dofs_idx}")
         print(f"Franka Wrist Cam Intrinsics: \n{self._wrist_camera.intrinsics}")
+        print(f"Franka running in device: {gs.device}")
 
     def _set_control_params(self):
         # Setting control parameters
@@ -55,6 +58,7 @@ class FrankaManager:
         print(f"Running {HOME_POS_STEPS} steps to stabilize at home position.")
         for _ in range(HOME_POS_STEPS):
             self._scene.step()
+        self.step()  # Perform setup once
         print(f"Done waiting for stabilization.")
 
     def get_ee_pos(self) -> torch.Tensor:

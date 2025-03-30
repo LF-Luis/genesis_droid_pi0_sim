@@ -17,6 +17,8 @@ Script to pick up a bottle using Franka Panda robot arm in Genesis Sim, being dr
 # Setup Params
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
+# Pi0 task prompt
+task_prompt = "pick up the bottle"
 
 # Initialize link to OpenPi model, locally hosted
 # pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
@@ -78,28 +80,7 @@ with perf_timer("build scene"):  # takes 17.520714 seconds
     )
 
 
-
 franka_manager.set_to_init_pos()
-
-
-
-# try:
-#     import IPython
-#     IPython.embed()
-# except KeyboardInterrupt:
-#     print("Simulation interrupted by user.")
-# except Exception as e:
-#     print(f"An error occurred: {e}")
-# finally:
-#     import sys; sys.exit()
-
-
-
-
-# Define a text prompt for the model
-task_prompt = "pick up the bottle"
-
-
 
 
 print("Starting control loop. Close the viewer window or press Ctrl+C to stop.")
@@ -107,6 +88,22 @@ print("Starting control loop. Close the viewer window or press Ctrl+C to stop.")
 done = False
 try:
     while not done:
+
+        from sim_utils.robot_debug import RobotDebug
+        rD = RobotDebug(franka_manager, scene, True)
+
+        franka_manager.step()
+
+        # Enter IPython's interactive mode
+        cv2.waitKey(1)
+        import IPython
+        IPython.embed()
+
+        import sys; sys.exit()
+
+        # TODO: Cam is not showing up
+
+
         # 1. Capture observations from cameras
         # Update wrist camera pose to follow the gripper's current pose
 
