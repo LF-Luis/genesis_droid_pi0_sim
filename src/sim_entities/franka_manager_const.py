@@ -26,7 +26,10 @@ VELOCITY_GAINS = np.array([450, 450, 350, 350, 200, 200, 200, 10, 10])
 FORCE_RANGES_LOWER = np.array([-87, -87, -87, -87, -12, -12, -12, -100, -100])
 FORCE_RANGES_UPPER = np.array([87, 87, 87, 87, 12, 12, 12, 100, 100])
 
-HOME_POS = np.array([0, -0.785, 0, -2.356, 0, 1.571, 0.785, 0.04, 0.04])
+# HOME_POS = np.array([0, -0.785, 0, -2.356, 0, 1.571, 0.785, 0.04, 0.04])
+HOME_POS = np.array([-3.9809e-05, -5.5633e-01,  6.7885e-04, -2.6390e+00, -1.9741e-03,
+                     2.2822e+00,  7.8514e-01,  3.9988e-02,  4.0000e-02])  # manually tuned
+
 HOME_POS_STEPS = 50  # Steps to wait for stabilization
 
 # Cam config values

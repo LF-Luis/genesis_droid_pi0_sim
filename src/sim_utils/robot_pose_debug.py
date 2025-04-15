@@ -1,7 +1,11 @@
 import numpy as np
 from src.sim_entities.franka_manager import FrankaManager
 
-class RobotDebug:
+class RobotPoseDebug:
+    """
+    Other helpful functions:
+    _franka.get_qpos()
+    """
 
     def __init__(self, franka_manager: FrankaManager, scene, verbose=False):
         """
@@ -46,7 +50,7 @@ class RobotDebug:
         current_quat = self._franka_manager.get_ee_quat().cpu().numpy()
 
         # Solve IK for the new position
-        qpos, err = self._franka_manager._franka.inverse_kinematics(
+        qpos, ik_diff_err = self._franka_manager._franka.inverse_kinematics(
             link=self._franka_manager._end_effector,
             pos=new_pos,
             quat=current_quat,
@@ -54,10 +58,10 @@ class RobotDebug:
         )
 
         if self._verbose:
-            print(f"IK error: {err}")
+            print(f"qpos: {qpos} \nIK error: {ik_diff_err}")
 
         self._franka_manager._franka.control_dofs_position(qpos)
-        self._log_spatial_info()
+        self.log_spatial_info()
 
     def _rotate_end_effector(self, axis, angle):
         current_pos = self._franka_manager.get_ee_pos().cpu().numpy()
@@ -68,7 +72,7 @@ class RobotDebug:
         new_quat = self._combine_quaternions(current_quat, rotation_quat)
 
         # Solve IK for the new rotation
-        qpos, err = self._franka_manager._franka.inverse_kinematics(
+        qpos, ik_diff_err = self._franka_manager._franka.inverse_kinematics(
             link=self._franka_manager._end_effector,
             pos=current_pos,
             quat=new_quat,
@@ -76,11 +80,11 @@ class RobotDebug:
         )
 
         if self._verbose:
-            print(f"IK error: {err}")
+            print(f"qpos: {qpos} \nIK error: {ik_diff_err}")
 
         self._franka_manager._franka.control_dofs_position(qpos)
         # self._scene.step()
-        self._log_spatial_info()
+        self.log_spatial_info()
 
     def _create_rotation_quaternion(self, axis, angle):
         angle_rad = np.radians(angle)
@@ -106,7 +110,7 @@ class RobotDebug:
             w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
         ])
 
-    def _log_spatial_info(self):
+    def log_spatial_info(self):
         if self._verbose:
             pos = self._franka_manager.get_ee_pos().cpu().numpy()
             quat = self._franka_manager.get_ee_quat().cpu().numpy()

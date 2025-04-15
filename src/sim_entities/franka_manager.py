@@ -26,7 +26,7 @@ class FrankaManager:
 
         # Wrist camera will be attached to the robot's wrist
         self._wrist_camera = scene.add_camera(
-            pos=(0.0, 0.0, 0.0),    # initial pose (will be updated dynamically)
+            pos=(0.0, 0.0, 0.0),  # initial pose (will be updated dynamically)
             lookat=(0.0, 0.0, 0.0),
             res=CAM_RES,
             fov=CAM_FOV,
@@ -85,7 +85,7 @@ class FrankaManager:
         Run on each sim step (not tied to fps).
         Set vis = False to skip computing cam location and graphics during movement.
         """
-        if not vis:
+        if vis:
             cam_t = get_camera_transform(
                 self.get_ee_pos(),
                 self.get_ee_quat(),
@@ -93,11 +93,4 @@ class FrankaManager:
                 self._cam_ee_rot_offset
             )
             self._wrist_camera.set_pose(transform=cam_t.cpu().numpy())
-            self._wrist_camera.render()
-
-
-
-
-# TODO:
-# [ ] move all wrist cam logic (setup and update) into franka_manager.py
-# [ ] should pos_offset be [0.11, 0.0, -0.02]?
+            _ = self._wrist_camera.render()

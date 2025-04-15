@@ -2,7 +2,7 @@ import numpy as np
 import genesis as gs
 
 
-class CamDebugLayout:
+class CamPoseDebug:
 
     def __init__(self, camera, verbose = False):
         """
@@ -17,12 +17,12 @@ class CamDebugLayout:
 
         # Define movement vectors in local coordinates
         self._directions = {
+            'right':   np.array([1, 0, 0]),
             'left':     np.array([-1, 0, 0]),
-            'right':    np.array([1, 0, 0]),
-            'up':       np.array([0, 0, 1]),
-            'down':     np.array([0, 0, -1]),
-            'forward':  np.array([0, 1, 0]),
-            'backward': np.array([0, -1, 0])
+            'up':       np.array([0, 1, 0]),
+            'down':     np.array([0, -1, 0]),
+            'forward':  np.array([0, 0, -1]),
+            'backward': np.array([0, 0, 1]),
         }
 
     # Movement shortcuts
@@ -38,7 +38,7 @@ class CamDebugLayout:
     def pitch(self, angle=10): self._rotate_camera('y', angle)
     def yaw(self, angle=10): self._rotate_camera('z', angle)
 
-    def _log_spatial_info(self):
+    def log_spatial_info(self):
         if self._verbose:
             print(f"pos: {self._cam.pos} \nlookat: {self._cam.lookat} \ntransform: {self._cam.transform} \nextrinsics: {self._cam.extrinsics}")
 
@@ -72,7 +72,7 @@ class CamDebugLayout:
         self._cam.set_pose(transform=new_transform)
         self._cam.render()
 
-        self._log_spatial_info()
+        self.log_spatial_info()
 
     def _rotate_camera(self, axis, angle_degrees):
         """
@@ -113,4 +113,4 @@ class CamDebugLayout:
         self._cam.set_pose(transform=new_transform)
         self._cam.render()
 
-        self._log_spatial_info()
+        self.log_spatial_info()
