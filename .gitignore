@@ -1,3 +1,9 @@
+# Store temp data (e.g. training datasets)
+/temp_data/*
+!temp_data/.gitkeep
+
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
