@@ -103,8 +103,8 @@ def steps(n=10):
         _ = ext_camera.render()
 
 
-print("Starting control loop. Close the viewer window or press Ctrl+C to stop.")
-# Main control loop
+print("Starting simulation.")
+
 done = False
 try:
     while not done:
@@ -170,10 +170,19 @@ try:
         if img_wrist.shape[-1] != 3:
             img_wrist = np.transpose(img_wrist, (1, 2, 0))
 
+        """
+        See src/data_inpection/droid_data.py
+        'observation': FeaturesDict({
+            'cartesian_position': Tensor(shape=(6,), dtype=float64),
+            'exterior_image_1_left': Image(shape=(180, 320, 3), dtype=uint8),
+            'exterior_image_2_left': Image(shape=(180, 320, 3), dtype=uint8),
+            'gripper_position': Tensor(shape=(1,), dtype=float64),
+            'joint_position': Tensor(shape=(7,), dtype=float64),
+            'wrist_image_left': Image(shape=(180, 320, 3), dtype=uint8),
+        }),
+        """
         # Resize images on the client side to minimize bandwidth, latency, and match training routines.
-        # Always return images in uint8 format.
-        # The typical resize_size for pre-trained pi0 models is 224.
-        # Note that the proprioceptive `state` can be passed unnormalized, normalization will be handled on the server side.
+        # Resizing it to 224x224 (as seen in openpi repo)
         observation = {
             "observation/exterior_image_1_left": image_tools.convert_to_uint8(image_tools.resize_with_pad(img_ext, 224, 224)),
             "observation/wrist_image_left": image_tools.convert_to_uint8(image_tools.resize_with_pad(img_wrist, 224, 224)),

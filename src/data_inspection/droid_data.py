@@ -129,7 +129,7 @@ def explore(num_episodes=1, shuffle_buffer=1000, seed=0):
 
 if __name__ == "__main__":
     # get_data_schema()
-    explore(num_episodes=1, shuffle_buffer=1000, seed=24)
+    explore(num_episodes=5, shuffle_buffer=1000, seed=24)
 
 
 '''
