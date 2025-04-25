@@ -69,8 +69,9 @@ class FrankaManager:
 
     def get_joints_and_gripper_pos(self):
         # Get the current joint and gripper revolute angles in radians
-        joint_positions = self._franka.get_dofs_position(self.dofs_idx[:7])  # First 7 DOFs are the arm joints
-        gripper_position = self._franka.get_dofs_position(self.dofs_idx[7:8])  # 8th DOF is the first finger joint
+        dofs_positions = self._franka.get_dofs_position()  # 9 joints, held in CUDA Tensor
+        joint_positions = dofs_positions[:7]  # First 7 DOFs are the arm joints
+        gripper_position = dofs_positions[7:]  # 8th and 9th DOF is the gripper joints
         return joint_positions, gripper_position
 
     def set_revolute_radians(self, action):

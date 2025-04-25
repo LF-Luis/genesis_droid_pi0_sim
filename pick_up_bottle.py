@@ -21,10 +21,10 @@ Cameras info: https://www.stereolabs.com/store/products/zed-mini
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
 # Pi0 task prompt
-task_prompt = "pick up the bottle"
+task_prompt = "pick up the yellow bottle from the blue surface below"
 
 # Initialize link to OpenPi model, locally hosted
-# pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
+pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
 
 # Initialize Genesis
 gs.init(backend=gs.gpu)
@@ -103,6 +103,45 @@ def steps(n=10):
         _ = ext_camera.render()
 
 
+def inspect_structure(obj):
+    print("=== Structure Info ===")
+
+    # Outer type
+    print(f"Outer type: {type(obj)}")
+
+    # Number of elements
+    try:
+        length = len(obj)
+        print(f"Number of top-level elements: {length}")
+    except TypeError:
+        print("Object has no length (not iterable)")
+        return
+
+    # Data type of elements
+    if isinstance(obj, np.ndarray):
+        print(f"Numpy dtype: {obj.dtype}")
+        print(f"Shape: {obj.shape}")
+        print(f"Inner type (inferred from first element): {type(obj.flat[0]) if obj.size > 0 else 'N/A'}")
+
+    elif torch and isinstance(obj, torch.Tensor):
+        print(f"PyTorch dtype: {obj.dtype}")
+        print(f"Shape: {obj.shape}")
+        print(f"Inner type (inferred): {type(obj.flatten()[0].item()) if obj.numel() > 0 else 'N/A'}")
+
+    elif isinstance(obj, list):
+        if len(obj) > 0:
+            first_type = type(obj[0])
+            print(f"Inner type (first element): {first_type}")
+            try:
+                inner_value_type = type(obj[0][0])
+                print(f"Nested value type (first element of first element): {inner_value_type}")
+            except Exception:
+                pass
+        else:
+            print("List is empty, inner type unknown.")
+    else:
+        print("Unsupported type or unknown structure.")
+
 print("Starting simulation.")
 
 done = False
@@ -115,60 +154,15 @@ try:
 
         steps(50)
 
+        # Get scene "observation" data for Pi0 model (joint angles and cam images)
+        ext_camera_img = ext_camera.render()[0]  # 0th is the rgb_arr
+        wrist_cam_img = franka_manager.cam_render()[0]  # numpy.ndarray, uint8, Shape: (720, 1280, 3)
 
-        # Enter IPython's interactive mode
-        import IPython
-        IPython.embed()
-        import sys; sys.exit()
+        # First 7 DOFs are the arm joints, 8th and 9th are the gripper
+        joint_positions, gripper_position = franka_manager.get_joints_and_gripper_pos()  # CUDA torch.float32
 
-
-        # 1. Capture observations from cameras
-        # Update wrist camera pose to follow the gripper's current pose
-
-        wrist_pos = franka_manager.get_ee_pos()
-        wrist_quat = franka_manager.get_ee_quat()
-        print(f"start wrist pos: {wrist_pos} | quat: {wrist_quat}")
-        print(f"start wrist type pos: {type(wrist_pos)} | quat: {type(wrist_quat)}")
-
-
-
-
-
-        # 2. Prepare OpenPI input and infer action
-
-        # First 7 DOFs are the arm joints
-        # 8th DOF is the first finger joint
-        joint_positions, gripper_position = franka_manager.get_revolute_radians()
-
-        # Convert CUDA tensors to numpy arrays
-        if torch.is_tensor(joint_positions):
-            joint_positions = joint_positions.cpu().numpy()
-        if torch.is_tensor(gripper_position):
-            gripper_position = gripper_position.cpu().numpy()
-
-        # Ensure images are in correct format (H, W, 3) uint8
-        if isinstance(img_ext, torch.Tensor):
-            img_ext = img_ext.cpu().numpy()
-        if isinstance(img_wrist, torch.Tensor):
-            img_wrist = img_wrist.cpu().numpy()
-
-        # Handle case where images are returned as tuples
-        if isinstance(img_ext, tuple):
-            img_ext = img_ext[0]  # Extract the image data from the tuple
-        if isinstance(img_wrist, tuple):
-            img_wrist = img_wrist[0]  # Extract the image data from the tuple
-
-        # Ensure images are uint8 and in range [0, 255]
-        if img_ext.dtype != np.uint8:
-            img_ext = (img_ext * 255).astype(np.uint8)
-        if img_wrist.dtype != np.uint8:
-            img_wrist = (img_wrist * 255).astype(np.uint8)
-
-        # Ensure images are in (H, W, 3) format
-        if img_ext.shape[-1] != 3:
-            img_ext = np.transpose(img_ext, (1, 2, 0))
-        if img_wrist.shape[-1] != 3:
-            img_wrist = np.transpose(img_wrist, (1, 2, 0))
+        joint_positions = joint_positions.cpu().numpy()
+        gripper_position = gripper_position.cpu().numpy()
 
         """
         See src/data_inpection/droid_data.py
@@ -184,27 +178,44 @@ try:
         # Resize images on the client side to minimize bandwidth, latency, and match training routines.
         # Resizing it to 224x224 (as seen in openpi repo)
         observation = {
-            "observation/exterior_image_1_left": image_tools.convert_to_uint8(image_tools.resize_with_pad(img_ext, 224, 224)),
-            "observation/wrist_image_left": image_tools.convert_to_uint8(image_tools.resize_with_pad(img_wrist, 224, 224)),
+            "observation/exterior_image_1_left": image_tools.resize_with_pad(ext_camera_img, 224, 224),
+            "observation/wrist_image_left": image_tools.resize_with_pad(wrist_cam_img, 224, 224),
             "observation/joint_position": joint_positions,
-            "observation/gripper_position": gripper_position,
+            "observation/gripper_position": np.array([gripper_position[0]]),  # must be a single number since it applies to both gripper fingers
             "prompt": task_prompt,
         }
 
+        print(f"observation: {observation}")
+
         try:
-            action_chunk = pi0_model_client.infer(observation)["actions"]
+            model_response = pi0_model_client.infer(observation)
+            action = model_response["actions"]  # Shape: (10, 8), numpy.float64
         except Exception as e:
             print(f"Error running inference. Error: {e}")
             raise
 
-        # Convert to numpy array for processing
-        if isinstance(action_chunk, np.ndarray):
-            action = action_chunk
-        else:
-            try:
-                action = np.array(action_chunk)
-            except:
-                action = np.array(action_chunk.detach().cpu())  # handle torch tensor if needed
+
+        print("action_chunk:"); inspect_structure(action)
+
+        # Enter IPython's interactive mode
+        import IPython
+        IPython.embed()
+        import sys; sys.exit()
+
+        """
+        At every inference call, π0 outputs a 10x8 chunk. That is 10 actions, with each action having 8
+        values that correspond to the 8 joints+gripper in the Franka robot (7 rotary joints, 1 gripper action).
+        Note that Franka defined in has 9 joints+gripper states (7 rotary joints, 2 gripper action). The 1 gripper
+        action from π0 is applied to both gripper fingers.
+
+        In the π0 paper, Franka runs at 20Hz with a 16 step horizon (π0 paper, APPENDIX D. Inference). Here I'll
+        use 20Hz as well, but with a 10 step horizon per chunk. We'll record the tracking error (q_desired - q_actual).
+        """
+
+        """
+        DEBUG: run each action at full step completion to make sure model output makes sense, then run at 20 Hz only
+        """
+
 
         # Print debug information about action shape
         print(f"Debug: Action shape: {action.shape}, DOFs length: {len(franka_manager.dofs_idx)}")
@@ -241,21 +252,9 @@ try:
         control_steps = 5  # number of simulation sub-steps per action
         for i in range(control_steps):
             scene.step()
-            # Continuously update wrist cam to follow the moving hand
-            wrist_pos = franka_manager.get_ee_pos()
-            wrist_quat = franka_manager.get_ee_quat()
-            offset_back = rotate_vector(wrist_quat, torch.tensor([0, 0, -0.1], device="cuda"))
-            offset_fwd  = rotate_vector(wrist_quat, torch.tensor([0, 0,  0.2], device="cuda"))
-            cam_pos = wrist_pos + offset_back
-            cam_target = wrist_pos + offset_fwd
-
-            cam_pos = cam_pos.cpu().numpy()
-            cam_target = cam_target.cpu().numpy()
-
-            # _wrist_camera.set_pose(pos=tuple(cam_pos), lookat=tuple(cam_target))
 
             ext_camera.render()
-            # _wrist_camera.render()
+
             # Small delay to update display
             try:
                 cv2.waitKey(1)
