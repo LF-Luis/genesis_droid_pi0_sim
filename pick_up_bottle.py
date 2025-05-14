@@ -233,11 +233,10 @@ try:
         """
         for action in actions:
             """
-            Running at 1/20 = 0.05 secs = 50 ms per action
+            Running at 20 Hz = 1/20 secs = 0.05 secs = 50 ms per action
             Each step is 10ms
             So 5 steps per action
             """
-            # TODO: make gripper binary, 0.5 threshold
             # print(f"start joint_positions: {joint_positions}")
             # print(f"start gripper_position: {gripper_position}")
             # print(f"action: {action}")
@@ -257,9 +256,9 @@ try:
             # print(f"final franka_act: {franka_act}")
             franka_manager.set_joints_and_gripper_pos(franka_act)
 
-            steps(20)
+            steps(5)
 
-        if step_num % 20 == 0:
+        if step_num % 50 == 0:
             # Enter IPython's interactive mode
             import IPython
             IPython.embed()
