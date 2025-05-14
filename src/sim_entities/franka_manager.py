@@ -74,8 +74,8 @@ class FrankaManager:
         gripper_position = dofs_positions[7:]  # 8th and 9th DOF is the gripper joints
         return joint_positions, gripper_position
 
-    def set_revolute_radians(self, action):
-        # Set the current joint and gripper revolute angles in radians
+    def set_joints_and_gripper_pos(self, action):
+        # Set the current joint and gripper positions
         self._franka.control_dofs_position(action, self.dofs_idx)
 
     def cam_render(self):

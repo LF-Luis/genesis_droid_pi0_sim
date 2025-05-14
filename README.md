@@ -29,7 +29,12 @@ rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-54-196-66-127.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-3-86-63-197.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+```
+
+```bash
+xhost +local:root
+python pick_up_bottle.py
 ```
 
 ## Live CLI Debugger

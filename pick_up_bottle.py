@@ -21,7 +21,7 @@ Cameras info: https://www.stereolabs.com/store/products/zed-mini
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
 # Pi0 task prompt
-task_prompt = "pick up the yellow bottle from the blue surface below"
+task_prompt = "pick up the yellow bottle from the blue white below"
 
 # Initialize link to OpenPi model, locally hosted
 pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
@@ -40,14 +40,15 @@ with perf_timer("setup scene"):  # takes 29.097971 seconds
             camera_fov=60,
             max_FPS=60,
         ),
-        sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms
+        sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
         vis_options=gs.options.VisOptions(show_cameras=False),  # show where cameras are and where they're facing
         renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
     )
 
 with perf_timer("add items to scene"):
     # Add a ground plane and the Franka Panda robot to the scene
-    plane = scene.add_entity(gs.morphs.Plane())
+    white_surface = gs.surfaces.Default(color=(1.0, 1.0, 1.0, 1.0))
+    plane = scene.add_entity(gs.morphs.Plane(), surface=white_surface)
     franka_manager = FrankaManager(scene)
 
     # Add the bottle object to the scene
@@ -144,15 +145,17 @@ def inspect_structure(obj):
 
 print("Starting simulation.")
 
+
+# from sim_utils.robot_pose_debug import RobotPoseDebug
+# rD = RobotPoseDebug(franka_manager, scene, True)
+# cD = CamPoseDebug(camera=ext_camera, verbose=True)
+
+steps(50)
+
+step_num = 0
 done = False
 try:
     while not done:
-
-        from sim_utils.robot_pose_debug import RobotPoseDebug
-        rD = RobotPoseDebug(franka_manager, scene, True)
-        cD = CamPoseDebug(camera=ext_camera, verbose=True)
-
-        steps(50)
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
         ext_camera_img = ext_camera.render()[0]  # 0th is the rgb_arr
@@ -177,11 +180,26 @@ try:
         """
         # Resize images on the client side to minimize bandwidth, latency, and match training routines.
         # Resizing it to 224x224 (as seen in openpi repo)
+        # debug
+        from genesis.utils.tools import save_img_arr
+        save_img_arr(ext_camera_img, "ext_camera_img_pre_resize.png")
+        save_img_arr(wrist_cam_img, "wrist_cam_img_pre_resize.png")
+
+        ext_camera_img = image_tools.resize_with_pad(ext_camera_img, 224, 224)
+        wrist_cam_img = image_tools.resize_with_pad(wrist_cam_img, 224, 224)
+
+        # debug
+        from genesis.utils.tools import save_img_arr
+        save_img_arr(ext_camera_img, "ext_camera_img.png")
+        save_img_arr(wrist_cam_img, "wrist_cam_img.png")
+
+        gripper_position = np.array([gripper_position[0]])
+
         observation = {
-            "observation/exterior_image_1_left": image_tools.resize_with_pad(ext_camera_img, 224, 224),
-            "observation/wrist_image_left": image_tools.resize_with_pad(wrist_cam_img, 224, 224),
+            "observation/exterior_image_1_left": ext_camera_img,
+            "observation/wrist_image_left": wrist_cam_img,
             "observation/joint_position": joint_positions,
-            "observation/gripper_position": np.array([gripper_position[0]]),  # must be a single number since it applies to both gripper fingers
+            "observation/gripper_position": gripper_position,  # must be a single number since it applies to both gripper fingers
             "prompt": task_prompt,
         }
 
@@ -189,18 +207,16 @@ try:
 
         try:
             model_response = pi0_model_client.infer(observation)
-            action = model_response["actions"]  # Shape: (10, 8), numpy.float64
+            actions = model_response["actions"]  # Shape: (10, 8), numpy.float64
         except Exception as e:
             print(f"Error running inference. Error: {e}")
             raise
 
 
-        print("action_chunk:"); inspect_structure(action)
-
-        # Enter IPython's interactive mode
-        import IPython
-        IPython.embed()
-        import sys; sys.exit()
+        # Debug
+        print("action_chunk:")
+        # inspect_structure(actions)
+        print(actions)
 
         """
         At every inference call, π0 outputs a 10x8 chunk. That is 10 actions, with each action having 8
@@ -215,57 +231,43 @@ try:
         """
         DEBUG: run each action at full step completion to make sure model output makes sense, then run at 20 Hz only
         """
+        for action in actions:
+            """
+            Running at 1/20 = 0.05 secs = 50 ms per action
+            Each step is 10ms
+            So 5 steps per action
+            """
+            # TODO: make gripper binary, 0.5 threshold
+            # print(f"start joint_positions: {joint_positions}")
+            # print(f"start gripper_position: {gripper_position}")
+            # print(f"action: {action}")
 
+            # Gripper is considered open when the action value is greater than 0.5
 
-        # Print debug information about action shape
-        print(f"Debug: Action shape: {action.shape}, DOFs length: {len(franka_manager.dofs_idx)}")
-        print(f"Debug: Action data: {action}")
-        print(f"Debug: DOFs indices: {franka_manager.dofs_idx}")
+            franka_act = np.zeros(9)
+            franka_act[:7] = joint_positions + action[:7]
+            # franka_act[7:9] = gripper_position + action[7]
 
-        # If the model produced a sequence of actions, take the first action for this step
-        if action.ndim > 1:
-            action = action[0]
-            print(f"Debug: After taking first action: {action.shape}")
+            # Open/close is opposite in Genesis URDF of Franka?
+            if action[-1].item() > 0.5:
+                franka_act[7:9] = 0.0
+            else:
+                franka_act[7:9] = 0.75  # 1.0
 
-        # The policy outputs 8 values (7 for arm joints, 1 for gripper)
-        # But the robot has 9 DOFs (7 for arm joints, 2 for finger joints)
-        # Handle this by duplicating the gripper action for both finger joints
-        if action.shape[0] == 8 and len(franka_manager.dofs_idx) == 9:
-            arm_action = action[:7]  # First 7 values for arm joints
-            gripper_action = action[7]  # 8th value for gripper
+            # print(f"final franka_act: {franka_act}")
+            franka_manager.set_joints_and_gripper_pos(franka_act)
 
-            # Create a 9-dimensional action with the gripper action duplicated
-            full_action = np.zeros(9)
-            full_action[:7] = arm_action  # Copy arm actions
-            full_action[7:9] = gripper_action  # Same gripper action for both fingers
+            steps(20)
 
-            action = full_action
-            print(f"Debug: Expanded action shape: {action.shape}")
-            print(f"Debug: Expanded action data: {action}")
+        if step_num % 20 == 0:
+            # Enter IPython's interactive mode
+            import IPython
+            IPython.embed()
+            # import sys; sys.exit()
 
-        action = action.astype(float)
+        # Increase step count
+        step_num += 1
 
-        # 3. Apply the action to the robot (position control for each DoF)
-        franka_manager.set_revolute_radians(action)
-
-        # 4. Step the simulation forward a few steps to execute the action
-        control_steps = 5  # number of simulation sub-steps per action
-        for i in range(control_steps):
-            scene.step()
-
-            ext_camera.render()
-
-            # Small delay to update display
-            try:
-                cv2.waitKey(1)
-            except:
-                pass
-
-        # 5. Check if the bottle is lifted (success condition)
-        bottle_pos = bottle.get_pos()  # get bottle's center position
-        if bottle_pos[2] > 0.2:  # if the bottle's height > 20cm (adjust threshold as needed)
-            print("Bottle picked up successfully!")
-            done = True
 
 except KeyboardInterrupt:
     print("Simulation interrupted by user.")

@@ -38,23 +38,23 @@ CAM_FOV = 57.  # Vertical FOV for Zed mini: 57 degrees
 
 def get_wrist_cam_offset(device) -> Tuple[torch.Tensor, torch.Tensor]:
     """
-    Translation and rotation offset of wrist camera w.r.t. end-effector.
+    Translation and rotation offset of wrist camera w.r.t. end-effector to put the camera
+    under the wrist.
     Numbers were manually tuned.
     This should be called only once during init.
     """
     print(f"get_wrist_cam_offset device: {device}")
-
     # Position offset from robotics EE
-    pos_offset = torch.tensor([0.11, 0.0, -0.04], device=device)
+    pos_offset = torch.tensor([-0.11, 0.0, -0.04], device=device)
 
     # Rotation offset w.r.t. robotics EE
     # 180° rotation about x-axis: flip camera's z-axis.
     q_x = torch.tensor([0.0, 1.0, 0.0, 0.0], device=device)  # [cos(pi/2), sin(pi/2), 0, 0]
-    # 90° rotation about z-axis.
-    angle_z = math.pi / 2
+    # -90° rotation about z-axis.
+    angle_z = (math.pi / 2) * -1
     q_z = torch.tensor([math.cos(angle_z/2), 0.0, 0.0, math.sin(angle_z/2)], device=device)
-    # -20° rotation about y-axis.
-    angle_y = math.radians(-20)
+    # 20° rotation about y-axis.
+    angle_y = math.radians(20)
     q_y = torch.tensor([math.cos(angle_y/2), 0.0, math.sin(angle_y/2), 0.0], device=device)
     # Combine rotations: apply q_x, then q_z, then q_y
     rot_offset = quaternion_multiply(q_z, q_x)
