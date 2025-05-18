@@ -69,21 +69,35 @@ with perf_timer("add items to scene"):
     # External camera: static position, looking at (part of) the robot, manipulator, and scene with object
 
     # Manually tuned
-    ext_cam_T = np.array([[ 9.08489575e-01,  2.00108195e-01, -3.66883365e-01, -1.41301081e-01],
-                          [-4.17907517e-01,  4.35015408e-01, -7.97568118e-01, -5.60818185e-01],
-                          [ 5.27355937e-16,  8.77905636e-01,  4.78833681e-01, 6.97813210e-01],
-                          [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00, 1.00000000e+00]])
+    # ext_cam_T = np.array([[ 9.08489575e-01,  2.00108195e-01, -3.66883365e-01, -1.41301081e-01],
+    #                       [-4.17907517e-01,  4.35015408e-01, -7.97568118e-01, -5.60818185e-01],
+    #                       [ 5.27355937e-16,  8.77905636e-01,  4.78833681e-01, 6.97813210e-01],
+    #                       [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00, 1.00000000e+00]])
+    ext_cam_T = np.array([[ 0.96725646,  0.12152847, -0.22281333,  0.06295104],
+                          [-0.2499452,   0.30367189, -0.91940784, -0.59134819],
+                          [-0.04407208,  0.94499429,  0.32410405,  0.55773207],
+                          [ 0.,          0.,          0.,          1.        ]])
+    ext_cam_T_2 = np.array([[-0.8132096,   0.15450917, -0.56108562,  0.1298112 ],
+                            [-0.5742504,  -0.36955738,  0.73052297,  0.51779325],
+                            [-0.09448083,  0.91627194,  0.38925456,  0.52241897],
+                            [ 0.,          0.,          0.,          1.        ]])
+
     ext_camera = scene.add_camera(
         res=CAM_RES,
         pos=[0, 0, 0],
-        # pos=[-0.14130108, -0.56081819, 0.69781321],
         lookat=[0, 0, 0],
-        # lookat=[0.15467354, 0.26569094, 0.21897953],
         fov=CAM_FOV,
         GUI=True
     )
-
     print(f"Intrinsics: \nexternal cam: \n{ext_camera.intrinsics}")
+
+    ext_camera_2 = scene.add_camera(
+        res=CAM_RES,
+        pos=[0, 0, 0],
+        lookat=[0, 0, 0],
+        fov=CAM_FOV,
+        GUI=True
+    )
 
 with perf_timer("build scene"):  # takes 17.520714 seconds
     # Build the scene to finalize loading of entities
@@ -91,6 +105,7 @@ with perf_timer("build scene"):  # takes 17.520714 seconds
         compile_kernels = COMPILE_KERNELS,  # Set to False when debugging scene layout
     )
     ext_camera.set_pose(transform=ext_cam_T)
+    ext_camera_2.set_pose(transform=ext_cam_T_2)
 
 
 franka_manager.set_to_init_pos()
@@ -102,6 +117,7 @@ def steps(n=10):
         scene.step()
         franka_manager.step()
         _ = ext_camera.render()
+        _ = ext_camera_2.render()
 
 
 def inspect_structure(obj):
@@ -148,9 +164,9 @@ print("Starting simulation.")
 
 # from sim_utils.robot_pose_debug import RobotPoseDebug
 # rD = RobotPoseDebug(franka_manager, scene, True)
-# cD = CamPoseDebug(camera=ext_camera, verbose=True)
+cD = CamPoseDebug(camera=ext_camera_2, verbose=True)
 
-steps(50)
+steps(3)
 
 step_num = 0
 done = False
@@ -159,13 +175,27 @@ try:
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
         ext_camera_img = ext_camera.render()[0]  # 0th is the rgb_arr
+        ext_camera_img_2 = ext_camera_2.render()[0]  # 0th is the rgb_arr
         wrist_cam_img = franka_manager.cam_render()[0]  # numpy.ndarray, uint8, Shape: (720, 1280, 3)
+
+
+        # # debug
+        # from genesis.utils.tools import save_img_arr
+        # save_img_arr(ext_camera_img, "ext_camera_img_pre_resize.png")
+        # save_img_arr(wrist_cam_img, "wrist_cam_img_pre_resize.png")
+
 
         # First 7 DOFs are the arm joints, 8th and 9th are the gripper
         joint_positions, gripper_position = franka_manager.get_joints_and_gripper_pos()  # CUDA torch.float32
 
         joint_positions = joint_positions.cpu().numpy()
         gripper_position = gripper_position.cpu().numpy()
+
+        # ## >> DEBUG
+        # import IPython
+        # IPython.embed()
+        # import sys; sys.exit()
+        # ## <<
 
         """
         See src/data_inpection/droid_data.py
@@ -180,23 +210,20 @@ try:
         """
         # Resize images on the client side to minimize bandwidth, latency, and match training routines.
         # Resizing it to 224x224 (as seen in openpi repo)
-        # debug
-        from genesis.utils.tools import save_img_arr
-        save_img_arr(ext_camera_img, "ext_camera_img_pre_resize.png")
-        save_img_arr(wrist_cam_img, "wrist_cam_img_pre_resize.png")
-
         ext_camera_img = image_tools.resize_with_pad(ext_camera_img, 224, 224)
+        ext_camera_img_2 = image_tools.resize_with_pad(ext_camera_img_2, 224, 224)
         wrist_cam_img = image_tools.resize_with_pad(wrist_cam_img, 224, 224)
 
-        # debug
-        from genesis.utils.tools import save_img_arr
-        save_img_arr(ext_camera_img, "ext_camera_img.png")
-        save_img_arr(wrist_cam_img, "wrist_cam_img.png")
+        # # debug
+        # from genesis.utils.tools import save_img_arr
+        # save_img_arr(ext_camera_img, "ext_camera_img.png")
+        # save_img_arr(wrist_cam_img, "wrist_cam_img.png")
 
         gripper_position = np.array([gripper_position[0]])
 
         observation = {
             "observation/exterior_image_1_left": ext_camera_img,
+            "observation/exterior_image_2_left": ext_camera_img_2,
             "observation/wrist_image_left": wrist_cam_img,
             "observation/joint_position": joint_positions,
             "observation/gripper_position": gripper_position,  # must be a single number since it applies to both gripper fingers
@@ -214,9 +241,9 @@ try:
 
 
         # Debug
-        print("action_chunk:")
+        # print("action_chunk:")
         # inspect_structure(actions)
-        print(actions)
+        # print(actions)
 
         """
         At every inference call, π0 outputs a 10x8 chunk. That is 10 actions, with each action having 8
@@ -251,18 +278,18 @@ try:
             if action[-1].item() > 0.5:
                 franka_act[7:9] = 0.0
             else:
-                franka_act[7:9] = 0.75  # 1.0
+                franka_act[7:9] = 0.6  # 1.0
 
             # print(f"final franka_act: {franka_act}")
             franka_manager.set_joints_and_gripper_pos(franka_act)
 
             steps(5)
 
-        if step_num % 50 == 0:
-            # Enter IPython's interactive mode
-            import IPython
-            IPython.embed()
-            # import sys; sys.exit()
+        # if step_num > 0 and step_num % 50 == 0:
+        #     # Enter IPython's interactive mode
+        #     import IPython
+        #     IPython.embed()
+        #     # import sys; sys.exit()
 
         # Increase step count
         step_num += 1
