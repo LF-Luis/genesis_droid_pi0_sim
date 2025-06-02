@@ -25,11 +25,19 @@ uv run scripts/serve_policy.py policy:checkpoint \
 ## Systems
 Copying to openpi dir, which is mounted inside of
 ```bash
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-23-20-57-229.compute-1.amazonaws.com
+# Restart GNOME and DCV server
+sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
+
+ec2-23-20-57-229.compute-1.amazonaws.com:8443#console
+
+xhost +local:root
+
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-54-162-218-140.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-23-20-57-229.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
 ```
 
 ```bash

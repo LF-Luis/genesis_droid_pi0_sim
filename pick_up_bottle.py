@@ -1,13 +1,13 @@
-import cv2
-import torch
 import numpy as np
 import genesis as gs
 from openpi_client import image_tools
 from openpi_client import websocket_client_policy
 
 from src.utils.perf_timer import perf_timer
-from src.sim_entities.franka_manager import FrankaManager
+# from src.utils.debug import inspect_structure
 from src.sim_utils.cam_pose_debug import CamPoseDebug
+from src.sim_entities.franka_manager import FrankaManager
+from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
 
 
 """
@@ -21,152 +21,49 @@ Cameras info: https://www.stereolabs.com/store/products/zed-mini
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
 # Pi0 task prompt
-task_prompt = "pick up the yellow bottle from the blue white below"
+# task_prompt = "pick up the yellow bottle from the white floor below"
+task_prompt = "pick up the bottle from the white floor below"
 
 # Initialize link to OpenPi model, locally hosted
-pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
+# pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
 
 # Initialize Genesis
 gs.init(backend=gs.gpu)
 
-with perf_timer("setup scene"):  # takes 29.097971 seconds
-    # Set up the simulation scene with a viewer
-    scene = gs.Scene(
-        show_viewer=True,
-        viewer_options=gs.options.ViewerOptions(
-            res=(1280, 720),
-            camera_pos=(0.8, -1.0, 0.5),   # position the viewer camera behind and above the robot
-            camera_lookat=(0.5, 0.0, 0.2), # look at the area where the bottle is expected
-            camera_fov=60,
-            max_FPS=60,
-        ),
-        sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
-        vis_options=gs.options.VisOptions(show_cameras=False),  # show where cameras are and where they're facing
-        renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
-    )
+with perf_timer("Setup scene"):  # 1.24 seconds
+    scene = setup_scene()
 
-with perf_timer("add items to scene"):
-    # Add a ground plane and the Franka Panda robot to the scene
-    white_surface = gs.surfaces.Default(color=(1.0, 1.0, 1.0, 1.0))
-    plane = scene.add_entity(gs.morphs.Plane(), surface=white_surface)
+# with perf_timer("Setup ext cams"):  # 0.000126 seconds
+#     ext_cam_1_left, ext_cam_2_left = setup_cams(scene)
+
+with perf_timer("Setup Franka"):  # 1.08 secs
     franka_manager = FrankaManager(scene)
 
-    # Add the bottle object to the scene
-    bottle = scene.add_entity(
-        material=gs.materials.Rigid(rho=300),
-        morph=gs.morphs.URDF(
-            file="urdf/3763/mobility_vhacd.urdf",
-            scale=0.09,
-            pos=(0.5, 0.0, 0.1),     # place bottle in front of robot, slightly above ground
-            # pos=(0.65, 0.0, 0.036),
-            euler=(0, 90, 0),
-        ),
-    )
-
-    # Set up cameras for external view and wrist view
-    # FIXME: temp, using wrist cameras intrinsics
-    from src.sim_entities.franka_manager_const import CAM_FOV, CAM_RES
-    # External camera: static position, looking at (part of) the robot, manipulator, and scene with object
-
-    # Manually tuned
-    # ext_cam_T = np.array([[ 9.08489575e-01,  2.00108195e-01, -3.66883365e-01, -1.41301081e-01],
-    #                       [-4.17907517e-01,  4.35015408e-01, -7.97568118e-01, -5.60818185e-01],
-    #                       [ 5.27355937e-16,  8.77905636e-01,  4.78833681e-01, 6.97813210e-01],
-    #                       [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00, 1.00000000e+00]])
-    ext_cam_T = np.array([[ 0.96725646,  0.12152847, -0.22281333,  0.06295104],
-                          [-0.2499452,   0.30367189, -0.91940784, -0.59134819],
-                          [-0.04407208,  0.94499429,  0.32410405,  0.55773207],
-                          [ 0.,          0.,          0.,          1.        ]])
-    ext_cam_T_2 = np.array([[-0.8132096,   0.15450917, -0.56108562,  0.1298112 ],
-                            [-0.5742504,  -0.36955738,  0.73052297,  0.51779325],
-                            [-0.09448083,  0.91627194,  0.38925456,  0.52241897],
-                            [ 0.,          0.,          0.,          1.        ]])
-
-    ext_camera = scene.add_camera(
-        res=CAM_RES,
-        pos=[0, 0, 0],
-        lookat=[0, 0, 0],
-        fov=CAM_FOV,
-        GUI=True
-    )
-    print(f"Intrinsics: \nexternal cam: \n{ext_camera.intrinsics}")
-
-    ext_camera_2 = scene.add_camera(
-        res=CAM_RES,
-        pos=[0, 0, 0],
-        lookat=[0, 0, 0],
-        fov=CAM_FOV,
-        GUI=True
-    )
-
-with perf_timer("build scene"):  # takes 17.520714 seconds
+with perf_timer("Build scene"):  # 21.28 secs
     # Build the scene to finalize loading of entities
-    scene.build(
-        compile_kernels = COMPILE_KERNELS,  # Set to False when debugging scene layout
-    )
-    ext_camera.set_pose(transform=ext_cam_T)
-    ext_camera_2.set_pose(transform=ext_cam_T_2)
+    scene.build(compile_kernels = COMPILE_KERNELS)
 
-
+# ext_cam_1_left.set_pose(transform=EXT_CAM_1_T)
+# ext_cam_2_left.set_pose(transform=EXT_CAM_2_T)
 franka_manager.set_to_init_pos()
-
 
 # Temp debug function to step through sim
 def steps(n=10):
     for _ in range(n):
         scene.step()
         franka_manager.step()
-        _ = ext_camera.render()
-        _ = ext_camera_2.render()
-
-
-def inspect_structure(obj):
-    print("=== Structure Info ===")
-
-    # Outer type
-    print(f"Outer type: {type(obj)}")
-
-    # Number of elements
-    try:
-        length = len(obj)
-        print(f"Number of top-level elements: {length}")
-    except TypeError:
-        print("Object has no length (not iterable)")
-        return
-
-    # Data type of elements
-    if isinstance(obj, np.ndarray):
-        print(f"Numpy dtype: {obj.dtype}")
-        print(f"Shape: {obj.shape}")
-        print(f"Inner type (inferred from first element): {type(obj.flat[0]) if obj.size > 0 else 'N/A'}")
-
-    elif torch and isinstance(obj, torch.Tensor):
-        print(f"PyTorch dtype: {obj.dtype}")
-        print(f"Shape: {obj.shape}")
-        print(f"Inner type (inferred): {type(obj.flatten()[0].item()) if obj.numel() > 0 else 'N/A'}")
-
-    elif isinstance(obj, list):
-        if len(obj) > 0:
-            first_type = type(obj[0])
-            print(f"Inner type (first element): {first_type}")
-            try:
-                inner_value_type = type(obj[0][0])
-                print(f"Nested value type (first element of first element): {inner_value_type}")
-            except Exception:
-                pass
-        else:
-            print("List is empty, inner type unknown.")
-    else:
-        print("Unsupported type or unknown structure.")
+        # _ = ext_cam_1_left.render()
+        # _ = ext_cam_2_left.render()
 
 print("Starting simulation.")
 
-
-# from sim_utils.robot_pose_debug import RobotPoseDebug
-# rD = RobotPoseDebug(franka_manager, scene, True)
-cD = CamPoseDebug(camera=ext_camera_2, verbose=True)
-
 steps(3)
+
+## >> DEBUG
+import IPython
+IPython.embed()
+import sys; sys.exit()
+## <<
 
 step_num = 0
 done = False
@@ -174,8 +71,8 @@ try:
     while not done:
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
-        ext_camera_img = ext_camera.render()[0]  # 0th is the rgb_arr
-        ext_camera_img_2 = ext_camera_2.render()[0]  # 0th is the rgb_arr
+        ext_camera_img = ext_cam_1_left.render()[0]  # 0th is the rgb_arr
+        ext_camera_img_2 = ext_cam_2_left.render()[0]  # 0th is the rgb_arr
         wrist_cam_img = franka_manager.cam_render()[0]  # numpy.ndarray, uint8, Shape: (720, 1280, 3)
 
 
@@ -190,12 +87,6 @@ try:
 
         joint_positions = joint_positions.cpu().numpy()
         gripper_position = gripper_position.cpu().numpy()
-
-        # ## >> DEBUG
-        # import IPython
-        # IPython.embed()
-        # import sys; sys.exit()
-        # ## <<
 
         """
         See src/data_inpection/droid_data.py

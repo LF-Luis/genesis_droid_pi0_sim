@@ -19,6 +19,7 @@ https://docs.aws.amazon.com/dcv/latest/adminguide/setting-up-installing.html
 
 ## Compute -- how to setup
 NVIDIA Omniverse GPU-Optimized AMI
+https://aws.amazon.com/marketplace/pp/prodview-4gyborfkw4qjs
 
 g4dn.xlarge
 
