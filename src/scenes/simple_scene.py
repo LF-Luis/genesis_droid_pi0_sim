@@ -87,4 +87,12 @@ def setup_scene():
         ),
     )
 
+    # MUG_FILE_PATH = "/workspace/genesis/assets/urdf/ACE_Coffee_Mug_Kristen_16_oz_cup/model.xml"
+    # mug = scene.add_entity(
+    #     gs.morphs.MJCF(
+    #         file=MUG_FILE_PATH,
+    #         pos=(0.5, 0.0, 0.054),
+    #     )
+    # )
+
     return scene

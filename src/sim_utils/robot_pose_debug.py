@@ -31,21 +31,21 @@ class RobotPoseDebug:
         }
 
     # Movement shortcuts
-    def move_x_plus(self): self._move_end_effector('x+')
-    def move_x_minus(self): self._move_end_effector('x-')
-    def move_y_plus(self): self._move_end_effector('y+')
-    def move_y_minus(self): self._move_end_effector('y-')
-    def move_z_plus(self): self._move_end_effector('z+')
-    def move_z_minus(self): self._move_end_effector('z-')
+    def move_x_plus(self, scale=1.0, grip=None): self._move_end_effector('x+', scale, grip)
+    def move_x_minus(self, scale=1.0, grip=None): self._move_end_effector('x-', scale, grip)
+    def move_y_plus(self, scale=1.0, grip=None): self._move_end_effector('y+', scale, grip)
+    def move_y_minus(self, scale=1.0, grip=None): self._move_end_effector('y-', scale, grip)
+    def move_z_plus(self, scale=1.0, grip=None): self._move_end_effector('z+', scale, grip)
+    def move_z_minus(self, scale=1.0, grip=None): self._move_end_effector('z-', scale, grip)
 
     # Rotation shortcuts
     def rotate_x(self, angle=10): self._rotate_end_effector('x', angle)
     def rotate_y(self, angle=10): self._rotate_end_effector('y', angle)
     def rotate_z(self, angle=10): self._rotate_end_effector('z', angle)
 
-    def _move_end_effector(self, direction):
+    def _move_end_effector(self, direction, scale=1.0, grip=None):
         current_pos = self._franka_manager.get_ee_pos().cpu().numpy()
-        move_vector = self._directions[direction]
+        move_vector = self._directions[direction] * scale
         new_pos = current_pos + move_vector
         current_quat = self._franka_manager.get_ee_quat().cpu().numpy()
 
@@ -59,6 +59,10 @@ class RobotPoseDebug:
 
         if self._verbose:
             print(f"qpos: {qpos} \nIK error: {ik_diff_err}")
+
+        # Handle gripper control if specified
+        if grip is not None:
+            qpos[7:9] = grip  # Set gripper joints to specified value (0 for closed, 1 for open)
 
         self._franka_manager._franka.control_dofs_position(qpos)
         self.log_spatial_info()
@@ -115,3 +119,27 @@ class RobotPoseDebug:
             pos = self._franka_manager.get_ee_pos().cpu().numpy()
             quat = self._franka_manager.get_ee_quat().cpu().numpy()
             print(f"End-effector position: {pos} \nEnd-effector rotation (quaternion): {quat}")
+
+    def open_grip(self):
+        # Open the gripper by setting both finger joints to 1.0
+        joint_positions, _ = self._franka_manager.get_joints_and_gripper_pos()
+        joint_positions = joint_positions.cpu().numpy()
+
+        franka_act = np.zeros(9)
+        franka_act[:7] = joint_positions
+        franka_act[7:9] = 1.0  # Open gripper
+
+        self._franka_manager.set_joints_and_gripper_pos(franka_act)
+        self.log_spatial_info()
+
+    def close_grip(self):
+        # Close the gripper by setting both finger joints to 0.0
+        joint_positions, _ = self._franka_manager.get_joints_and_gripper_pos()
+        joint_positions = joint_positions.cpu().numpy()
+
+        franka_act = np.zeros(9)
+        franka_act[:7] = joint_positions
+        franka_act[7:9] = 0.0  # Close gripper
+
+        self._franka_manager.set_joints_and_gripper_pos(franka_act)
+        self.log_spatial_info()

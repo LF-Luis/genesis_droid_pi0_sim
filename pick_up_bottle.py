@@ -59,6 +59,10 @@ print("Starting simulation.")
 
 steps(3)
 
+from src.sim_utils.robot_pose_debug import RobotPoseDebug
+
+rD = RobotPoseDebug(franka_manager, scene, verbose=True)
+
 ## >> DEBUG
 import IPython
 IPython.embed()
