@@ -20,7 +20,20 @@ class FrankaManager:
         """
         self._scene = scene
 
-        self._franka = self._scene.add_entity(gs.morphs.MJCF(file=MUJOCO_FILE, pos=BASE_POS))
+        # self._franka = self._scene.add_entity(gs.morphs.MJCF(file=MUJOCO_FILE, pos=BASE_POS))
+
+        self._franka = self._scene.add_entity(
+            gs.morphs.MJCF(file=MUJOCO_FILE, pos=BASE_POS),
+            material=gs.materials.Rigid(
+                friction=0.3,  # Lower friction for robot
+                coup_restitution=0.0,  # No bouncing during coupling
+            ),
+            surface=gs.surfaces.Default(vis_mode="visual"),
+        )
+
+
+
+
         self._end_effector = self._franka.get_link(END_EFFECTOR_NAME)
         self.dofs_idx = [self._franka.get_joint(name).dof_idx_local for name in JOINT_NAMES]
 

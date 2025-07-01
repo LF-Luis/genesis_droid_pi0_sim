@@ -59,7 +59,7 @@ def setup_scene():
         renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
     )
 
-    # Add a ground plane and the Franka Panda robot to the scene
+    # Add a ground plane
     white_surface = gs.surfaces.Default(color=(1.0, 1.0, 1.0, 1.0))
     plane = scene.add_entity(gs.morphs.Plane(), surface=white_surface)
 
@@ -86,13 +86,5 @@ def setup_scene():
             # fixed=True,
         ),
     )
-
-    # MUG_FILE_PATH = "/workspace/genesis/assets/urdf/ACE_Coffee_Mug_Kristen_16_oz_cup/model.xml"
-    # mug = scene.add_entity(
-    #     gs.morphs.MJCF(
-    #         file=MUG_FILE_PATH,
-    #         pos=(0.5, 0.0, 0.054),
-    #     )
-    # )
 
     return scene

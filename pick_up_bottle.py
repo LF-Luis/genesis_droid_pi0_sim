@@ -7,7 +7,8 @@ from src.utils.perf_timer import perf_timer
 # from src.utils.debug import inspect_structure
 from src.sim_utils.cam_pose_debug import CamPoseDebug
 from src.sim_entities.franka_manager import FrankaManager
-from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
+# from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
+from src.scenes.replicad_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
 
 
 """
@@ -31,7 +32,7 @@ task_prompt = "pick up the bottle from the white floor below"
 gs.init(backend=gs.gpu)
 
 with perf_timer("Setup scene"):  # 1.24 seconds
-    scene = setup_scene()
+    scene, debug_bottle, debug_entity = setup_scene()
 
 # with perf_timer("Setup ext cams"):  # 0.000126 seconds
 #     ext_cam_1_left, ext_cam_2_left = setup_cams(scene)
