@@ -8,7 +8,8 @@ from src.utils.perf_timer import perf_timer
 from src.sim_utils.cam_pose_debug import CamPoseDebug
 from src.sim_entities.franka_manager import FrankaManager
 # from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
-from src.scenes.replicad_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
+# from src.scenes.replicad_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
+from src.scenes.replicad_scene_2 import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
 
 
 """
