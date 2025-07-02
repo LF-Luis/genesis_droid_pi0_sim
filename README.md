@@ -1,3 +1,8 @@
+## License
+
+This project is licensed under the MIT License.
+See the [LICENSE](./LICENSE) file for more details.
+
 # Using π0 model to drive Franka manipulator in Genesis Sim
 * 1st goal: can it perform a trained task
 * 2nd goal: can it learn a new task
