@@ -8,7 +8,8 @@ import numpy as np
 import genesis as gs
 
 # Path to the downloaded ReplicaCAD dataset (Interactive version)
-DATASET_PATH = "/workspace/assets/ReplicaCAD_dataset"
+# DATASET_PATH = "/workspace/assets/ReplicaCAD_dataset"
+DATASET_PATH = "/workspace/assets/ReplicaCAD"
 
 # Choose a scene to load (e.g., "apt_0" or "v3_sc2_staging_00")
 scene_name = "apt_0"
@@ -81,6 +82,17 @@ def parse_into_scene(scene):
         with open(obj_cfg_path, 'r') as f:
             obj_cfg = json.load(f)
         visual_asset = os.path.join(DATASET_PATH, "objects", os.path.basename(obj_cfg["render_asset"]))
+
+        '''
+        # Use convex/ assets -- didn't help
+        # .../objects/convex/frl_apartment_basket_cv_decomp.glb
+        # file_name = os.path.basename(obj_cfg["render_asset"])[:-4] + "_cv_decomp.glb"
+        # visual_asset = os.path.join(DATASET_PATH, "objects/convex", file_name)
+        # if not os.path.exists(visual_asset):
+        #     print(f"Convex visual asset not found: {visual_asset}")
+        #     visual_asset = os.path.join(DATASET_PATH, "objects", os.path.basename(obj_cfg["render_asset"]))
+        '''
+
         # Get physical properties if provided
         friction = obj_cfg.get("friction_coefficient", 0.5)
         restitution = obj_cfg.get("restitution_coefficient", 0.0)
