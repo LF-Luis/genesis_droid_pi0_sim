@@ -1,146 +1,133 @@
-"""
-Git LFS is needed
-git clone https://huggingface.co/datasets/ai-habitat/ReplicaCAD_dataset
-"""
-
-import json, os
+import os, json
 import numpy as np
 import genesis as gs
 
-# Path to the downloaded ReplicaCAD dataset (Interactive version)
-# DATASET_PATH = "/workspace/assets/ReplicaCAD_dataset"
+# Path to ReplicaCAD dataset root
 DATASET_PATH = "/workspace/assets/ReplicaCAD"
-
-# Choose a scene to load (e.g., "apt_0" or "v3_sc2_staging_00")
-scene_name = "apt_0"
+scene_name = "apt_0"  # choose your scene (e.g., "apt_0", etc.)
 scene_config_file = os.path.join(DATASET_PATH, "configs/scenes", f"{scene_name}.scene_instance.json")
 with open(scene_config_file, 'r') as f:
     scene_data = json.load(f)
 
-def parse_into_scene(scene):
+def habitat_to_genesis_transform(translation, rotation_quat):
+    """Convert Habitat (Y-up) pose to Genesis (Z-up) pose."""
+    # Rotation of +90° about X-axis (to raise former Y to Z):
+    Rx90 = np.array([[1, 0, 0],
+                     [0, 0, -1],
+                     [0, 1,  0]])
+    trans = np.array(translation, dtype=float)
+    new_pos = Rx90.dot(trans)  # (x, y, z)_gen = (x, -z, y)_hab
+    # Quaternion (w, x, y, z) apply Rx90:
+    qx90 = np.array([0.70710678, 0.70710678, 0, 0])  # 90° about X
+    q = np.array(rotation_quat, dtype=float)         # Habitat quaternion (w, x, y, z)
+    # Quaternion multiply: new_q = qx90 * q  (apply X-90 first, then original rotation)
+    w1,x1,y1,z1 = qx90
+    w2,x2,y2,z2 = q
+    new_quat = np.array([
+        w1*w2 - x1*x2 - y1*y2 - z1*z2,
+        w1*x2 + x1*w2 + y1*z2 - z1*y2,
+        w1*y2 - x1*z2 + y1*w2 + z1*x2,
+        w1*z2 + x1*y2 - y1*x2 + z1*w2
+    ], dtype=float)
+    new_quat /= np.linalg.norm(new_quat)
+    return tuple(new_pos), tuple(new_quat)
 
-    # Load the static stage (apartment architecture)
-    stage_template = scene_data["stage_instance"]["template_name"]  # e.g. "stages/frl_apartment_stage" or "Stage_v3_sc2_staging"
-    # Resolve stage asset path via its stage config
-    stage_template_name = stage_template.split("/")[-1]  # e.g. "frl_apartment_stage"
-    stage_config_path = os.path.join(DATASET_PATH, "configs/stages", f"{stage_template_name}.stage_config.json")
-    with open(stage_config_path, 'r') as f:
-        stage_config = json.load(f)
-    stage_asset = stage_config["render_asset"]                      # e.g. "../../stages/frl_apartment_stage.glb"
-    stage_asset_path = os.path.join(DATASET_PATH, "stages", os.path.basename(stage_asset))
-    # Use friction/restitution from config if available, else defaults
-    stage_friction = stage_config.get("friction_coefficient", 0.5)
-    stage_restitution = stage_config.get("restitution_coefficient", 0.0)
+def determine_urdf_path(name: str) -> str:
+    """Determine URDF file path for articulated object by its template name."""
+    urdf_base = os.path.join(DATASET_PATH, "urdf")
+    if name.startswith("chestOfDrawers"):
+        return os.path.join(urdf_base, "chest_of_drawers", f"{name}.urdf")
+    elif name.startswith("kitchenCupboard"):
+        return os.path.join(urdf_base, "kitchen_cupboards", f"{name}.urdf")
+    elif name.startswith("door"):
+        return os.path.join(urdf_base, "doors", f"{name}.urdf")
+    else:
+        # e.g. "fridge", "cabinet", etc.
+        return os.path.join(urdf_base, name, f"{name}.urdf")
 
-    # Add stage as a fixed static mesh with collision
-    stage_morph = gs.morphs.Mesh(
-        file=stage_asset_path,
-        pos=(0, 0, 0), euler=(90, 0, 0),       # rotate from Y-up to Z-up
-        fixed=True, requires_jac_and_IK=False,
-        collision=True, visualization=True,
-        convexify=True, decompose_nonconvex=True, decimate=True, decimate_face_num=500,
-        merge_submeshes_for_collision=True, group_by_material=True
-    )
+def parse_into_scene(scene: gs.Scene):
+    # 1. Load the static stage (environment shell like walls/floor)
+    stage_template = scene_data["stage_instance"]["template_name"]  # e.g. "stages/frl_apartment_stage"
+    stage_name = os.path.basename(stage_template)                   # e.g. "frl_apartment_stage"
+    stage_cfg_path = os.path.join(DATASET_PATH, "configs/stages", f"{stage_name}.stage_config.json")
+    with open(stage_cfg_path, 'r') as f:
+        stage_cfg = json.load(f)
+    stage_render_asset = os.path.join(DATASET_PATH, "stages", os.path.basename(stage_cfg["render_asset"]))
+    stage_collision_asset = stage_cfg.get("collision_asset")
+    if stage_collision_asset:
+        stage_collision_asset = os.path.join(DATASET_PATH, "stages", os.path.basename(stage_collision_asset))
+    else:
+        stage_collision_asset = stage_render_asset  # use render mesh if no separate collision mesh
+    stage_scale = stage_cfg.get("units_to_meters", 1.0)
+    friction = stage_cfg.get("friction_coefficient", 0.5)
+    restitution = stage_cfg.get("restitution_coefficient", 0.0)
+    # Add stage visual (Y-up -> Z-up: apply 90° X rotation)
     scene.add_entity(
-        morph=stage_morph,
-        material=gs.materials.Rigid(friction=stage_friction, coup_restitution=stage_restitution),
+        gs.morphs.Mesh(file=stage_render_asset, pos=(0,0,0), euler=(90,0,0), scale=stage_scale,
+                       visualization=True, collision=False, fixed=True),
         surface=gs.surfaces.Default(vis_mode="visual")
     )
-
-    # Function to convert Habitat (Y-up) transform to Genesis (Z-up)
-    def habitat_to_genesis_transform(translation, rotation_quat):
-        """Convert position and quaternion from Habitat (Y-up) to Genesis (Z-up) frame."""
-        # Rotation of 90 deg about X-axis
-        Rx90 = np.array([[1, 0, 0],
-                        [0, 0, -1],
-                        [0, 1,  0]])
-        # Position: apply Rx90
-        trans = np.array(translation, dtype=float)
-        new_pos = Rx90.dot(trans)  # (x, y, z)_gen = (x, -z, y)_hab
-        # Quaternion: multiply with X-90 quaternion (w,x,y,z format)
-        # 90° about X-axis quaternion:
-        qx = np.array([0.70710678, 0.70710678, 0.0, 0.0])  # w=cos(45°), x=sin(45°), y=0, z=0
-        q = np.array(rotation_quat, dtype=float)
-        # Quaternion multiplication: qx * q  (both in w,x,y,z)
-        w1,x1,y1,z1 = qx;  w2,x2,y2,z2 = q
-        new_quat = np.array([
-            w1*w2 - x1*x2 - y1*y2 - z1*z2,
-            w1*x2 + x1*w2 + y1*z2 - z1*y2,
-            w1*y2 - x1*z2 + y1*w2 + z1*x2,
-            w1*z2 + x1*y2 - y1*x2 + z1*w2
-        ], dtype=float)
-        # Normalize quaternion (to avoid numerical drift)
-        new_quat = new_quat / np.linalg.norm(new_quat)
-        return tuple(new_pos), tuple(new_quat)
-
-    # Add all object instances (treat all as static obstacles for stability)
+    # Add stage collision
+    scene.add_entity(
+        gs.morphs.Mesh(file=stage_collision_asset, pos=(0,0,0), euler=(90,0,0), scale=stage_scale,
+                       visualization=False, collision=True, fixed=True,
+                       convexify=False, decimate=False, decompose_nonconvex=True),  # decompose large concave stage
+        material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
+        surface=gs.surfaces.Default(vis_mode="collision")
+    )
+    # 2. Load static object instances (furniture, etc.)
     for obj in scene_data.get("object_instances", []):
-        template = obj["template_name"]            # e.g. "objects/frl_apartment_sofa"
-        # Resolve object config and asset paths
-        obj_name = template.split("/")[-1]         # e.g. "frl_apartment_sofa"
+        template = obj["template_name"]          # e.g. "objects/frl_apartment_table"
+        obj_name = os.path.basename(template)    # e.g. "frl_apartment_table"
         obj_cfg_path = os.path.join(DATASET_PATH, "configs/objects", f"{obj_name}.object_config.json")
+        if not os.path.exists(obj_cfg_path):
+            print(f"Warning: no config for {obj_name}, skipping")
+            continue
         with open(obj_cfg_path, 'r') as f:
             obj_cfg = json.load(f)
-        visual_asset = os.path.join(DATASET_PATH, "objects", os.path.basename(obj_cfg["render_asset"]))
-
-        '''
-        # Use convex/ assets -- didn't help
-        # .../objects/convex/frl_apartment_basket_cv_decomp.glb
-        # file_name = os.path.basename(obj_cfg["render_asset"])[:-4] + "_cv_decomp.glb"
-        # visual_asset = os.path.join(DATASET_PATH, "objects/convex", file_name)
-        # if not os.path.exists(visual_asset):
-        #     print(f"Convex visual asset not found: {visual_asset}")
-        #     visual_asset = os.path.join(DATASET_PATH, "objects", os.path.basename(obj_cfg["render_asset"]))
-        '''
-
-        # Get physical properties if provided
+        # Paths for visual and collision meshes
+        vis_asset = os.path.join(DATASET_PATH, "objects", os.path.basename(obj_cfg["render_asset"]))
+        col_asset = obj_cfg.get("collision_asset")
+        if col_asset:
+            # collision_asset is relative to config file location
+            col_asset = os.path.normpath(os.path.join(os.path.dirname(obj_cfg_path), col_asset))
+        else:
+            col_asset = vis_asset  # fallback to visual mesh if no separate collision mesh
+        # Physical properties
+        scale = obj_cfg.get("scale", 1.0) * obj_cfg.get("units_to_meters", 1.0)
         friction = obj_cfg.get("friction_coefficient", 0.5)
         restitution = obj_cfg.get("restitution_coefficient", 0.0)
-        # Habitat transform (quaternion is [w,x,y,z] in config)
-        translation = obj.get("translation", [0, 0, 0])
-        rotation = obj.get("rotation", [1, 0, 0, 0])
-        pos_gen, quat_gen = habitat_to_genesis_transform(translation, rotation)
-        # Add the object as a fixed rigid body with collision
-        obj_morph = gs.morphs.Mesh(
-            file=visual_asset,
-            pos=pos_gen, quat=quat_gen,
-            scale=obj_cfg.get("scale", 1.0),        # use scale if specified in config
-            fixed=True, requires_jac_and_IK=False,
-            collision=True, visualization=True,
-            convexify=True, decompose_nonconvex=True, decimate=True, decimate_face_num=200,
-            merge_submeshes_for_collision=True, group_by_material=True
-        )
+        # Transform pose to Genesis frame
+        pos_hab = obj.get("translation", [0,0,0])
+        rot_hab = obj.get("rotation", [1,0,0,0])
+        pos_gen, quat_gen = habitat_to_genesis_transform(pos_hab, rot_hab)
+        # Add visual mesh (no collision)
         scene.add_entity(
-            morph=obj_morph,
-            material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
+            gs.morphs.Mesh(file=vis_asset, pos=pos_gen, quat=quat_gen, scale=scale,
+                           visualization=True, collision=False, fixed=True),
             surface=gs.surfaces.Default(vis_mode="visual")
         )
-
-    # Add articulated objects (with URDFs) such as doors, cabinets, etc.
-    for i, art in enumerate(scene_data.get("articulated_object_instances", [])):
-        print(f">>> {i} | art: {art}")
-        name = art["template_name"]  # e.g. "fridge", "chestOfDrawers_01", "door2"
-        # Determine URDF path based on name and dataset structure
-        if name.startswith("chestOfDrawers"):
-            urdf_path = os.path.join(DATASET_PATH, "urdf/chest_of_drawers", f"{name}.urdf")
-        elif name.startswith("kitchenCupboard"):
-            urdf_path = os.path.join(DATASET_PATH, "urdf/kitchen_cupboards", f"{name}.urdf")
-        elif name.startswith("door"):  # door1, door2, etc.
-            urdf_path = os.path.join(DATASET_PATH, "urdf/doors", f"{name}.urdf")
-        else:
-            # For names matching folder directly (fridge, cabinet, kitchen_counter, etc.)
-            urdf_path = os.path.join(DATASET_PATH, f"urdf/{name}", f"{name}.urdf")
-        if not os.path.exists(urdf_path):
-            print(f"URDF not found for {name}: expected at {urdf_path}")
-            continue
-        # Get transform and convert to Genesis frame
-        translation = art.get("translation", [0, 0, 0])
-        rotation = art.get("rotation", [1, 0, 0, 0])
-        pos_gen, quat_gen = habitat_to_genesis_transform(translation, rotation)
-        # Add URDF-based articulated object (base fixed in place)
-        art_morph = gs.morphs.URDF(file=urdf_path, pos=pos_gen, quat=quat_gen, fixed=True)
+        # Add collision mesh (invisible)
         scene.add_entity(
-            morph=art_morph,
+            gs.morphs.Mesh(file=col_asset, pos=pos_gen, quat=quat_gen, scale=scale,
+                           visualization=False, collision=True, fixed=True,
+                           convexify=False, decimate=False, decompose_nonconvex=False,
+                           group_by_material=False, merge_submeshes_for_collision=False),
+            material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
+            surface=gs.surfaces.Default(vis_mode="collision")
+        )
+    # 3. Load articulated objects (doors, cabinets with URDFs)
+    for art in scene_data.get("articulated_object_instances", []):
+        name = art["template_name"]  # e.g. "fridge", "door1", "kitchenCabinet_01", ...
+        urdf_path = determine_urdf_path(name)
+        if not os.path.exists(urdf_path):
+            print(f"(Skipping {name}, URDF not found: {urdf_path})")
+            continue
+        pos_hab = art.get("translation", [0,0,0])
+        rot_hab = art.get("rotation", [1,0,0,0])
+        pos_gen, quat_gen = habitat_to_genesis_transform(pos_hab, rot_hab)
+        scene.add_entity(
+            gs.morphs.URDF(file=urdf_path, pos=pos_gen, quat=quat_gen, fixed=art.get("fixed_base", True)),
             material=gs.materials.Rigid(friction=0.5, coup_restitution=0.0),
             surface=gs.surfaces.Default(vis_mode="visual")
         )

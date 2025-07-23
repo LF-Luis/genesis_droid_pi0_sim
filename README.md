@@ -7,6 +7,20 @@ See the [LICENSE](./LICENSE) file for more details.
 * 1st goal: can it perform a trained task
 * 2nd goal: can it learn a new task
 
+## Assets
+- https://huggingface.co/datasets/haosulab/ReplicaCAD
+    - It's a cleaned up/corrected version of https://huggingface.co/datasets/ai-habitat/ReplicaCAD_dataset
+
+```text
+frl_apartment_basket_cv_decomp.glb has multiple convex-hull sub-meshes that Genesis doesn't natively read as individual pieces.
+Genesis doesn’t automatically use each sub-mesh as its own collider. Instead, it:
+	1.	merges them,
+	2.	simplifies geometry,
+	3.	and creates convex collision shapes.
+
+[ ] load non-decomp GLB and let Genesis perform decomposition?
+```
+
 ## TODO
 [ ] Run Genesis and OpenPi in separate containers -- communicate via default network ports or create new SHM for faster communication.
     < > If SHM, profile transfer time before and after
@@ -31,16 +45,16 @@ uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-13-220-229-159.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-198-115-122.compute-1.amazonaws.com
 sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
 # Start DCV session on Macbook
-ec2-13-220-229-159.compute-1.amazonaws.com:8443#console
+ec2-54-198-115-122.compute-1.amazonaws.com:8443#console
 # Rsync code
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-13-220-229-159.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-54-198-115-122.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
 ```
 
 ```bash

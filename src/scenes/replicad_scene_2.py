@@ -73,16 +73,16 @@ def setup_scene():
     plane = scene.add_entity(gs.morphs.Plane())
 
     # Add bottle object to scene
-    # bottle = scene.add_entity(
-    #     material=gs.materials.Rigid(rho=300),
-    #     morph=gs.morphs.URDF(
-    #         file="urdf/3763/mobility_vhacd.urdf",
-    #         scale=0.09,
-    #         # pos=(0.5, 0.0, 0.1),
-    #         pos=(0.5, -0.25, 0.0343),
-    #         euler=(0, 90, 0),
-    #     ),
-    # )
+    bottle = scene.add_entity(
+        material=gs.materials.Rigid(rho=300),
+        morph=gs.morphs.URDF(
+            file="urdf/3763/mobility_vhacd.urdf",
+            scale=0.09,
+            # pos=(0.5, 0.0, 0.1),
+            pos=(0.5, -0.25, 0.0343),
+            euler=(0, 90, 0),
+        ),
+    )
 
     # # Add little water wheel to scene
     # fancy_wheel = scene.add_entity(
@@ -96,4 +96,4 @@ def setup_scene():
     #     ),
     # )
 
-    return scene, "bottle", "room_entity"
+    return scene, bottle, "room_entity"
