@@ -30,10 +30,13 @@ task_prompt = "pick up the bottle from the white floor below"
 # pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
 
 # Initialize Genesis
-gs.init(backend=gs.gpu)
+gs.init(
+    backend=gs.gpu,
+    logging_level="info",
+)
 
 with perf_timer("Setup scene"):  # 1.24 seconds
-    scene, debug_bottle, debug_entity = setup_scene()
+    scene, debug_bottle, debug_entity, basket_vis, basket_col = setup_scene()
 
 # with perf_timer("Setup ext cams"):  # 0.000126 seconds
 #     ext_cam_1_left, ext_cam_2_left = setup_cams(scene)

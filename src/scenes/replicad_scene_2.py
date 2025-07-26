@@ -1,7 +1,7 @@
 import numpy as np
 import genesis as gs
 
-from src.scenes.replicad_parse_scene import parse_into_scene
+# from src.scenes.replicad_parse_scene import parse_into_scene
 
 
 """
@@ -67,7 +67,10 @@ def setup_scene():
         renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
     )
 
-    parse_into_scene(scene)
+
+    from src.scenes.replicad_parse_scene_single_obj import parse_into_scene
+    basket_vis, basket_col = parse_into_scene(scene)
+
 
     # Add a ground plan
     plane = scene.add_entity(gs.morphs.Plane())
@@ -96,4 +99,4 @@ def setup_scene():
     #     ),
     # )
 
-    return scene, bottle, "room_entity"
+    return scene, bottle, "room_entity", basket_vis, basket_col
