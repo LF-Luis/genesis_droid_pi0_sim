@@ -46,6 +46,7 @@ def determine_urdf_path(name: str) -> str:
         return os.path.join(urdf_base, name, f"{name}.urdf")
 
 def parse_into_scene(scene: gs.Scene):
+
     # 1. Load the static stage (environment shell like walls/floor)
     stage_template = scene_data["stage_instance"]["template_name"]  # e.g. "stages/frl_apartment_stage"
     stage_name = os.path.basename(stage_template)                   # e.g. "frl_apartment_stage"
@@ -68,13 +69,15 @@ def parse_into_scene(scene: gs.Scene):
         surface=gs.surfaces.Default(vis_mode="visual")
     )
     # Add stage collision
-    scene.add_entity(
-        gs.morphs.Mesh(file=stage_collision_asset, pos=(0,0,0), euler=(90,0,0), scale=stage_scale,
-                       visualization=False, collision=True, fixed=True,
-                       convexify=False, decimate=False, decompose_nonconvex=True),  # decompose large concave stage
-        material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
-        surface=gs.surfaces.Default(vis_mode="collision")
-    )
+    # scene.add_entity(
+    #     gs.morphs.Mesh(file=stage_collision_asset, pos=(0,0,0), euler=(90,0,0), scale=stage_scale,
+    #                    visualization=False, collision=True, fixed=True,
+    #                    convexify=False, decimate=False, decompose_nonconvex=True),  # decompose large concave stage
+    #     material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
+    #     surface=gs.surfaces.Default(vis_mode="collision")
+    # )
+
+
     # 2. Load static object instances (furniture, etc.)
     for obj in scene_data.get("object_instances", []):
         template = obj["template_name"]          # e.g. "objects/frl_apartment_table"
@@ -101,21 +104,51 @@ def parse_into_scene(scene: gs.Scene):
         pos_hab = obj.get("translation", [0,0,0])
         rot_hab = obj.get("rotation", [1,0,0,0])
         pos_gen, quat_gen = habitat_to_genesis_transform(pos_hab, rot_hab)
+
+        motion_type = obj["motion_type"]
+        fixed = True
+        if motion_type == "DYNAMIC":
+            fixed = False
+        elif motion_type == "STATIC":
+            fixed = True
+        else:
+            print(f"> Missing 'motion_type' entry for: {template}")
+
         # Add visual mesh (no collision)
+        # scene.add_entity(
+        #     gs.morphs.Mesh(file=vis_asset, pos=pos_gen, quat=quat_gen, scale=scale,
+        #                    visualization=True, collision=False, fixed=True),
+        #     surface=gs.surfaces.Default(vis_mode="visual")
+        # )
+        # Add entity with collision mesh, view visual mesh
         scene.add_entity(
-            gs.morphs.Mesh(file=vis_asset, pos=pos_gen, quat=quat_gen, scale=scale,
-                           visualization=True, collision=False, fixed=True),
-            surface=gs.surfaces.Default(vis_mode="visual")
-        )
-        # Add collision mesh (invisible)
-        scene.add_entity(
-            gs.morphs.Mesh(file=col_asset, pos=pos_gen, quat=quat_gen, scale=scale,
-                           visualization=False, collision=True, fixed=True,
-                           convexify=False, decimate=False, decompose_nonconvex=False,
-                           group_by_material=False, merge_submeshes_for_collision=False),
-            material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
+            gs.morphs.Mesh(
+                file=vis_asset,
+                pos=pos_gen,
+                quat=quat_gen,
+                scale=scale,
+                visualization=True,  # Whether to show it in the sim viewer
+                collision=True,
+                fixed=fixed,         # can be True or False, and obj still has collision
+                convexify=False,     # Don't convert to convex-hull, try to keep original shape as much as possible (and most objects in scene have some concavity)
+                decimate=True,       # Simplify mesh for collision
+                decompose_nonconvex=False,
+            ),
+            # surface=gs.surfaces.Default(vis_mode="visual"),
             surface=gs.surfaces.Default(vis_mode="collision")
         )
+        # scene.add_entity(
+        #     gs.morphs.Mesh(file=vis_asset,  # col_asset,
+        #                    pos=pos_gen, quat=quat_gen, scale=scale,
+        #                    visualization=False, collision=True, fixed=True,
+        #                    convexify=False, decimate=False, decompose_nonconvex=False,
+        #                    group_by_material=False, merge_submeshes_for_collision=False),
+        #     material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
+        #     surface=gs.surfaces.Default(vis_mode="visual")
+        #     # surface=gs.surfaces.Default(vis_mode="collision")
+        # )
+
+
     # 3. Load articulated objects (doors, cabinets with URDFs)
     for art in scene_data.get("articulated_object_instances", []):
         name = art["template_name"]  # e.g. "fridge", "door1", "kitchenCabinet_01", ...

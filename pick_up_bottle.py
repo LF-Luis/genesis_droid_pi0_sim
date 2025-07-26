@@ -53,7 +53,8 @@ with perf_timer("Build scene"):  # 21.28 secs
 franka_manager.set_to_init_pos()
 
 # Temp debug function to step through sim
-def steps(n=10):
+# def steps(n=10):
+def steps(n=1):
     for _ in range(n):
         scene.step()
         franka_manager.step()
@@ -62,7 +63,8 @@ def steps(n=10):
 
 print("Starting simulation.")
 
-steps(3)
+# steps(3)
+steps(1)
 
 from src.sim_utils.robot_pose_debug import RobotPoseDebug
 
