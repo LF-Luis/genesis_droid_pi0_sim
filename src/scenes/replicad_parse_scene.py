@@ -47,7 +47,9 @@ def determine_urdf_path(name: str) -> str:
 
 def parse_into_scene(scene: gs.Scene):
 
+    #############################################################
     # 1. Load the static stage (environment shell like walls/floor)
+    #############################################################
     stage_template = scene_data["stage_instance"]["template_name"]  # e.g. "stages/frl_apartment_stage"
     stage_name = os.path.basename(stage_template)                   # e.g. "frl_apartment_stage"
     stage_cfg_path = os.path.join(DATASET_PATH, "configs/stages", f"{stage_name}.stage_config.json")
@@ -66,7 +68,8 @@ def parse_into_scene(scene: gs.Scene):
     scene.add_entity(
         gs.morphs.Mesh(file=stage_render_asset, pos=(0,0,0), euler=(90,0,0), scale=stage_scale,
                        visualization=True, collision=False, fixed=True),
-        surface=gs.surfaces.Default(vis_mode="visual")
+        surface=gs.surfaces.Default(vis_mode="visual"),
+        # surface=gs.surfaces.Default(vis_mode="collision"),
     )
     # Add stage collision
     # scene.add_entity(
@@ -78,7 +81,11 @@ def parse_into_scene(scene: gs.Scene):
     # )
 
 
+
+
+    #############################################################
     # 2. Load static object instances (furniture, etc.)
+    #############################################################
     for obj in scene_data.get("object_instances", []):
         template = obj["template_name"]          # e.g. "objects/frl_apartment_table"
         obj_name = os.path.basename(template)    # e.g. "frl_apartment_table"
@@ -135,7 +142,7 @@ def parse_into_scene(scene: gs.Scene):
                 decompose_nonconvex=False,
             ),
             # surface=gs.surfaces.Default(vis_mode="visual"),
-            surface=gs.surfaces.Default(vis_mode="collision")
+            surface=gs.surfaces.Default(vis_mode="collision"),
         )
         # scene.add_entity(
         #     gs.morphs.Mesh(file=vis_asset,  # col_asset,
@@ -149,7 +156,12 @@ def parse_into_scene(scene: gs.Scene):
         # )
 
 
+    return
+
+
+    #############################################################
     # 3. Load articulated objects (doors, cabinets with URDFs)
+    #############################################################
     for art in scene_data.get("articulated_object_instances", []):
         name = art["template_name"]  # e.g. "fridge", "door1", "kitchenCabinet_01", ...
         urdf_path = determine_urdf_path(name)

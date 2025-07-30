@@ -12,7 +12,8 @@ Constants for frank_manager.py
 """
 
 MUJOCO_FILE = "xml/franka_emika_panda/panda.xml"
-BASE_POS = (0, 0, 0)
+# BASE_POS = (0, 0, 0)
+BASE_POS = [0., -0.6, 0.]
 # Robot joints: 7 arm joints + 2 finger joints
 JOINT_NAMES = [
     "joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7",
