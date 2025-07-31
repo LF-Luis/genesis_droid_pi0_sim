@@ -28,11 +28,9 @@ class FrankaManager:
                 friction=0.3,  # Lower friction for robot
                 coup_restitution=0.0,  # No bouncing during coupling
             ),
-            surface=gs.surfaces.Default(vis_mode="visual"),
+            # surface=gs.surfaces.Default(vis_mode="visual"),
+            surface=gs.surfaces.Default(vis_mode="collision"),
         )
-
-
-
 
         self._end_effector = self._franka.get_link(END_EFFECTOR_NAME)
         self.dofs_idx = [self._franka.get_joint(name).dof_idx_local for name in JOINT_NAMES]

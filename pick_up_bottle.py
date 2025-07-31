@@ -41,8 +41,8 @@ with perf_timer("Setup scene"):  # 1.24 seconds
 # with perf_timer("Setup ext cams"):  # 0.000126 seconds
 #     ext_cam_1_left, ext_cam_2_left = setup_cams(scene)
 
-with perf_timer("Setup Franka"):  # 1.08 secs
-    franka_manager = FrankaManager(scene)
+# with perf_timer("Setup Franka"):  # 1.08 secs
+#     franka_manager = FrankaManager(scene)
 
 with perf_timer("Build scene"):  # 21.28 secs
     # Build the scene to finalize loading of entities
@@ -50,14 +50,14 @@ with perf_timer("Build scene"):  # 21.28 secs
 
 # ext_cam_1_left.set_pose(transform=EXT_CAM_1_T)
 # ext_cam_2_left.set_pose(transform=EXT_CAM_2_T)
-franka_manager.set_to_init_pos()
+# franka_manager.set_to_init_pos()
 
 # Temp debug function to step through sim
 # def steps(n=10):
 def steps(n=1):
     for _ in range(n):
         scene.step()
-        franka_manager.step()
+        # franka_manager.step()
         # _ = ext_cam_1_left.render()
         # _ = ext_cam_2_left.render()
 
@@ -68,7 +68,7 @@ steps(1)
 
 from src.sim_utils.robot_pose_debug import RobotPoseDebug
 
-rD = RobotPoseDebug(franka_manager, scene, verbose=True)
+# rD = RobotPoseDebug(franka_manager, scene, verbose=True)
 
 ## >> DEBUG
 import IPython

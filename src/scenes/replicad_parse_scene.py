@@ -83,11 +83,14 @@ def parse_into_scene(scene: gs.Scene):
 
 
 
+
     #############################################################
-    # 2. Load static object instances (furniture, etc.)
+    # 2. Load object instances (furniture, etc.)
     #############################################################
     for obj in scene_data.get("object_instances", []):
         template = obj["template_name"]          # e.g. "objects/frl_apartment_table"
+        if not("table" in template):
+            continue
         obj_name = os.path.basename(template)    # e.g. "frl_apartment_table"
         obj_cfg_path = os.path.join(DATASET_PATH, "configs/objects", f"{obj_name}.object_config.json")
         if not os.path.exists(obj_cfg_path):
@@ -113,20 +116,15 @@ def parse_into_scene(scene: gs.Scene):
         pos_gen, quat_gen = habitat_to_genesis_transform(pos_hab, rot_hab)
 
         motion_type = obj["motion_type"]
-        fixed = True
-        if motion_type == "DYNAMIC":
-            fixed = False
-        elif motion_type == "STATIC":
-            fixed = True
-        else:
-            print(f"> Missing 'motion_type' entry for: {template}")
+        # fixed = True
+        fixed = False
+        # if motion_type == "DYNAMIC":
+        #     fixed = False
+        # elif motion_type == "STATIC":
+        #     fixed = True
+        # else:
+        #     print(f"> Missing 'motion_type' entry for: {template}")
 
-        # Add visual mesh (no collision)
-        # scene.add_entity(
-        #     gs.morphs.Mesh(file=vis_asset, pos=pos_gen, quat=quat_gen, scale=scale,
-        #                    visualization=True, collision=False, fixed=True),
-        #     surface=gs.surfaces.Default(vis_mode="visual")
-        # )
         # Add entity with collision mesh, view visual mesh
         scene.add_entity(
             gs.morphs.Mesh(
@@ -139,21 +137,13 @@ def parse_into_scene(scene: gs.Scene):
                 fixed=fixed,         # can be True or False, and obj still has collision
                 convexify=False,     # Don't convert to convex-hull, try to keep original shape as much as possible (and most objects in scene have some concavity)
                 decimate=True,       # Simplify mesh for collision
+                # decompose_nonconvex=False,
                 decompose_nonconvex=False,
             ),
             # surface=gs.surfaces.Default(vis_mode="visual"),
             surface=gs.surfaces.Default(vis_mode="collision"),
         )
-        # scene.add_entity(
-        #     gs.morphs.Mesh(file=vis_asset,  # col_asset,
-        #                    pos=pos_gen, quat=quat_gen, scale=scale,
-        #                    visualization=False, collision=True, fixed=True,
-        #                    convexify=False, decimate=False, decompose_nonconvex=False,
-        #                    group_by_material=False, merge_submeshes_for_collision=False),
-        #     material=gs.materials.Rigid(friction=friction, coup_restitution=restitution),
-        #     surface=gs.surfaces.Default(vis_mode="visual")
-        #     # surface=gs.surfaces.Default(vis_mode="collision")
-        # )
+
 
 
     return
