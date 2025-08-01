@@ -61,9 +61,11 @@ def setup_scene():
             iterations=150,  # More iterations for better convergence
             tolerance=1e-6,  # Tighter tolerance
             contact_resolve_time=0.01,  # Faster contact resolution
+            # use_contact_island=True,  # use contact island to speed up contact resolving
         ),
         vis_options=gs.options.VisOptions(show_cameras=False),  # show where cameras are and where they're facing
-        renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
+        renderer=gs.renderers.Rasterizer(),  # use rasterizer for rendering images
+        # renderer = gs.renderers.RayTracer())
     )
 
 

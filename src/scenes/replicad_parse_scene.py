@@ -89,7 +89,7 @@ def parse_into_scene(scene: gs.Scene):
     #############################################################
     for obj in scene_data.get("object_instances", []):
         template = obj["template_name"]          # e.g. "objects/frl_apartment_table"
-        if not("table" in template):
+        if not("table" in template or "lamp" in template):
             continue
         obj_name = os.path.basename(template)    # e.g. "frl_apartment_table"
         obj_cfg_path = os.path.join(DATASET_PATH, "configs/objects", f"{obj_name}.object_config.json")
@@ -126,6 +126,24 @@ def parse_into_scene(scene: gs.Scene):
         #     print(f"> Missing 'motion_type' entry for: {template}")
 
         # Add entity with collision mesh, view visual mesh
+        ############ WORKING ############
+        # scene.add_entity(
+        #     gs.morphs.Mesh(
+        #         file=vis_asset,
+        #         pos=pos_gen,
+        #         quat=quat_gen,
+        #         scale=scale,
+        #         visualization=True,  # Whether to show it in the sim viewer
+        #         collision=True,
+        #         fixed=fixed,         # can be True or False, and obj still has collision
+        #         convexify=False,     # Don't convert to convex-hull, try to keep original shape as much as possible (and most objects in scene have some concavity)
+        #         decimate=True,       # Simplify mesh for collision
+        #         # decompose_nonconvex=False,
+        #         decompose_nonconvex=False,
+        #     ),
+        #     # surface=gs.surfaces.Default(vis_mode="visual"),
+        #     surface=gs.surfaces.Default(vis_mode="collision"),
+        # )
         scene.add_entity(
             gs.morphs.Mesh(
                 file=vis_asset,
@@ -137,8 +155,10 @@ def parse_into_scene(scene: gs.Scene):
                 fixed=fixed,         # can be True or False, and obj still has collision
                 convexify=False,     # Don't convert to convex-hull, try to keep original shape as much as possible (and most objects in scene have some concavity)
                 decimate=True,       # Simplify mesh for collision
+                decimate_face_num=160,  # Use smaller target to avoid issues with small meshes
                 # decompose_nonconvex=False,
-                decompose_nonconvex=False,
+                decompose_nonconvex=True,
+                coacd_options=gs.options.CoacdOptions(threshold=0.01, preprocess_resolution=100),
             ),
             # surface=gs.surfaces.Default(vis_mode="visual"),
             surface=gs.surfaces.Default(vis_mode="collision"),
