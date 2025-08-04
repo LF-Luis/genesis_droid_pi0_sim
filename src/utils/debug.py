@@ -1,4 +1,5 @@
 import sys
+import inspect
 
 import torch
 import IPython
@@ -11,12 +12,25 @@ def enter_interactive(exit_at_end=False):
     """
     print("="*42)
     print("Entering interactive mode.")
-    print("="*42)
+    print("-"*42)
     if exit_at_end:
         print("Type `exit` to exit the simulation.")
     else:
         print("Type `exit` to continue from this point in the code.")
-    IPython.embed()
+
+    # Captures caller's local variables and inject them into the interactive namespace
+    caller_frame = inspect.currentframe().f_back
+    if caller_frame:
+        print(f"Injecting caller's local vars...")
+        print("="*42)
+        caller_locals = caller_frame.f_locals.copy()
+        interactive_namespace = caller_locals.copy()
+        IPython.embed(user_ns=interactive_namespace)
+    else:
+        print(f"Not injecting caller's local vars...")
+        print("="*42)
+        IPython.embed()
+
     if exit_at_end:
         sys.exit()
 

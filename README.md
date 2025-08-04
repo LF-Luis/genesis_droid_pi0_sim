@@ -45,15 +45,15 @@ cd openpi && uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-34-239-182-197.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-80-129-97.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-34-239-182-197.compute-1.amazonaws.com:8443#console
+ec2-54-80-129-97.compute-1.amazonaws.com:8443#console
 # Rsync code
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-34-239-182-197.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-54-80-129-97.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
 ```
 
 ```bash

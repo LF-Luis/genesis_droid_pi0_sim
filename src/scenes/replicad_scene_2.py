@@ -87,7 +87,8 @@ def setup_scene():
             file="urdf/3763/mobility_vhacd.urdf",
             scale=0.09,
             # pos=(0.5, 0.0, 0.1),
-            pos=(0.5, -0.25, 0.0343),
+            # pos=(0.4, -0.9, 0.035),
+            pos=(0.7, -0.9, 0.038),
             euler=(0, 90, 0),
         ),
     )

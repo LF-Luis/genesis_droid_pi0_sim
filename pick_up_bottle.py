@@ -12,6 +12,27 @@ from src.sim_entities.franka_manager import FrankaManager
 from src.scenes.replicad_scene_2 import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
 
 
+from src.sim_utils.transformations import move_relative_to_frame
+import torch
+
+
+import gc
+def cleanup_and_recreate_pi0_client():
+    """
+    Completely garbage collect the pi0_model_client and create a new instance when client becomes unresponsive
+    """
+    global pi0_model_client
+    # Delete the reference
+    if 'pi0_model_client' in globals():
+        del pi0_model_client
+    # Force garbage collection
+    gc.collect()
+    # Create a new instance
+    pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
+    print("Successfully recreated pi0_model_client")
+    return pi0_model_client
+
+
 """
 Script to pick up a bottle using Franka Panda robot arm in Genesis Sim, being driven by OpenPI model.
 
@@ -29,7 +50,8 @@ RUN_PI0 = True
 # Pi0 task prompt
 # task_prompt = "pick up the yellow bottle from the white floor below"
 # task_prompt = "pick up the bottle from the white floor below"
-task_prompt = "grab the leg of the table"
+task_prompt = "pick up the yellow bottle"
+# task_prompt = "grab the leg of the table"
 
 # Initialize link to OpenPi model, locally hosted
 if RUN_PI0:
@@ -57,8 +79,20 @@ with perf_timer("Build scene"):  # 21.28 secs
     scene.build(compile_kernels = COMPILE_KERNELS)
 
 if SHOW_SCENE_CAMS:
-    ext_cam_1_left.set_pose(transform=EXT_CAM_1_T)
-    ext_cam_2_left.set_pose(transform=EXT_CAM_2_T)
+    # Move camera transforms to be positioned relative to robot base, but keep world orientation
+    robot_base_pos = franka_manager.get_base_pos()
+    EXT_CAM_1_T_robot_frame = move_relative_to_frame(
+        torch.tensor(EXT_CAM_1_T, device=gs.device),
+        robot_base_pos
+    )
+    EXT_CAM_2_T_robot_frame = move_relative_to_frame(
+        torch.tensor(EXT_CAM_2_T, device=gs.device),
+        robot_base_pos
+    )
+    # Set camera poses using the converted transforms
+    ext_cam_1_left.set_pose(transform=EXT_CAM_1_T_robot_frame.cpu().numpy())
+    ext_cam_2_left.set_pose(transform=EXT_CAM_2_T_robot_frame.cpu().numpy())
+
 if SHOW_ROBOT:
     franka_manager.set_to_init_pos()
 
@@ -146,16 +180,16 @@ try:
 
         try:
             print(f"loop_step: {loop_step} | Running inference.")
-            model_response = pi0_model_client.infer(observation)
+            with perf_timer("Pi0 Inference Time"):
+                model_response = pi0_model_client.infer(observation)
             actions = model_response["actions"]  # Shape: (10, 8), numpy.float64
         except Exception as e:
-            # Pi0 server can fail on the first few calls (cold start?),
-            # so try again by continuing to the next step
+            # Pi0 server can fail when it's first started up, so try again by continuing to the next step
             print(f"⚠️ loop_step: {loop_step} | Error running inference. Will try again. Error: {e}")
+            # cleanup_and_recreate_pi0_client()
             continue
             # raise
         print(f"loop_step: {loop_step} | Running inference successful.")
-
 
         # Debug
         # print("action_chunk:")

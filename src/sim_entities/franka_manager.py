@@ -78,6 +78,12 @@ class FrankaManager:
     def get_ee_quat(self) -> torch.Tensor:
         return self._end_effector.get_quat()
 
+    def get_base_pos(self) -> torch.Tensor:
+        return self._franka.get_pos()
+
+    def get_base_quat(self) -> torch.Tensor:
+        return self._franka.get_quat()
+
     def get_joints_and_gripper_pos(self):
         # Get the current joint and gripper revolute angles in radians
         dofs_positions = self._franka.get_dofs_position()  # 9 joints, held in CUDA Tensor
