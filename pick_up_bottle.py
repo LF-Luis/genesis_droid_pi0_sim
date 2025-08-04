@@ -4,7 +4,7 @@ from openpi_client import image_tools
 from openpi_client import websocket_client_policy
 
 from src.utils.perf_timer import perf_timer
-# from src.utils.debug import inspect_structure
+from src.utils.debug import enter_interactive #, inspect_structure
 from src.sim_utils.cam_pose_debug import CamPoseDebug
 from src.sim_entities.franka_manager import FrankaManager
 # from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
@@ -22,12 +22,18 @@ Cameras info: https://www.stereolabs.com/store/products/zed-mini
 # Setup Params
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
+SHOW_ROBOT = True
+SHOW_SCENE_CAMS = True
+RUN_PI0 = True
+
 # Pi0 task prompt
 # task_prompt = "pick up the yellow bottle from the white floor below"
-task_prompt = "pick up the bottle from the white floor below"
+# task_prompt = "pick up the bottle from the white floor below"
+task_prompt = "grab the leg of the table"
 
 # Initialize link to OpenPi model, locally hosted
-# pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
+if RUN_PI0:
+    pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
 
 # Initialize Genesis
 gs.init(
@@ -38,48 +44,52 @@ gs.init(
 with perf_timer("Setup scene"):  # 1.24 seconds
     scene, debug_bottle, debug_entity, basket_vis, basket_col = setup_scene()
 
-# with perf_timer("Setup ext cams"):  # 0.000126 seconds
-#     ext_cam_1_left, ext_cam_2_left = setup_cams(scene)
+if SHOW_SCENE_CAMS:
+    with perf_timer("Setup ext cams"):  # 0.000126 seconds
+        ext_cam_1_left, ext_cam_2_left = setup_cams(scene)
 
-# with perf_timer("Setup Franka"):  # 1.08 secs
-#     franka_manager = FrankaManager(scene)
+if SHOW_ROBOT:
+    with perf_timer("Setup Franka"):  # 1.08 secs
+        franka_manager = FrankaManager(scene)
 
 with perf_timer("Build scene"):  # 21.28 secs
     # Build the scene to finalize loading of entities
     scene.build(compile_kernels = COMPILE_KERNELS)
 
-# ext_cam_1_left.set_pose(transform=EXT_CAM_1_T)
-# ext_cam_2_left.set_pose(transform=EXT_CAM_2_T)
-# franka_manager.set_to_init_pos()
+if SHOW_SCENE_CAMS:
+    ext_cam_1_left.set_pose(transform=EXT_CAM_1_T)
+    ext_cam_2_left.set_pose(transform=EXT_CAM_2_T)
+if SHOW_ROBOT:
+    franka_manager.set_to_init_pos()
 
 # Temp debug function to step through sim
 # def steps(n=10):
 def steps(n=1):
     for _ in range(n):
         scene.step()
-        # franka_manager.step()
-        # _ = ext_cam_1_left.render()
-        # _ = ext_cam_2_left.render()
+        if SHOW_ROBOT:
+            franka_manager.step()
+        if SHOW_SCENE_CAMS:
+            _ = ext_cam_1_left.render()
+            _ = ext_cam_2_left.render()
 
 print("Starting simulation.")
 
 # steps(3)
 steps(1)
 
-from src.sim_utils.robot_pose_debug import RobotPoseDebug
+if SHOW_ROBOT:
+    from src.sim_utils.robot_pose_debug import RobotPoseDebug
+    rD = RobotPoseDebug(franka_manager, scene, verbose=True)
 
-# rD = RobotPoseDebug(franka_manager, scene, verbose=True)
-
-## >> DEBUG
-import IPython
-IPython.embed()
-import sys; sys.exit()
-## <<
-
-step_num = 0
+loop_step = -1
 done = False
 try:
     while not done:
+        loop_step += 1  # Increase logical loop-step (not tied to actual sim step)
+
+        if loop_step % 10 == 0:
+            enter_interactive()
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
         ext_camera_img = ext_cam_1_left.render()[0]  # 0th is the rgb_arr
@@ -132,14 +142,19 @@ try:
             "prompt": task_prompt,
         }
 
-        print(f"observation: {observation}")
+        # print(f"observation: {observation}")
 
         try:
+            print(f"loop_step: {loop_step} | Running inference.")
             model_response = pi0_model_client.infer(observation)
             actions = model_response["actions"]  # Shape: (10, 8), numpy.float64
         except Exception as e:
-            print(f"Error running inference. Error: {e}")
-            raise
+            # Pi0 server can fail on the first few calls (cold start?),
+            # so try again by continuing to the next step
+            print(f"⚠️ loop_step: {loop_step} | Error running inference. Will try again. Error: {e}")
+            continue
+            # raise
+        print(f"loop_step: {loop_step} | Running inference successful.")
 
 
         # Debug
@@ -160,12 +175,14 @@ try:
         """
         DEBUG: run each action at full step completion to make sure model output makes sense, then run at 20 Hz only
         """
-        for action in actions:
+        print(f"loop_step: {loop_step} | Applying inference actions.")
+        for i, action in enumerate(actions):
             """
             Running at 20 Hz = 1/20 secs = 0.05 secs = 50 ms per action
             Each step is 10ms
             So 5 steps per action
             """
+            print(f"loop_step: {loop_step} | Applying action {i+1}/{len(actions)}")
             # print(f"start joint_positions: {joint_positions}")
             # print(f"start gripper_position: {gripper_position}")
             # print(f"action: {action}")
@@ -187,15 +204,7 @@ try:
 
             steps(5)
 
-        # if step_num > 0 and step_num % 50 == 0:
-        #     # Enter IPython's interactive mode
-        #     import IPython
-        #     IPython.embed()
-        #     # import sys; sys.exit()
-
-        # Increase step count
-        step_num += 1
-
+        print(f"loop_step: {loop_step} | Done applying inference actions.")
 
 except KeyboardInterrupt:
     print("Simulation interrupted by user.")

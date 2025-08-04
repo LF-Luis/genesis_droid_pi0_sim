@@ -1,8 +1,30 @@
+import sys
+
 import torch
+import IPython
 import numpy as np
 
 
+def enter_interactive(exit_at_end=False):
+    """
+    Type `exit` to continue from this point in the code.
+    """
+    print("="*42)
+    print("Entering interactive mode.")
+    print("="*42)
+    if exit_at_end:
+        print("Type `exit` to exit the simulation.")
+    else:
+        print("Type `exit` to continue from this point in the code.")
+    IPython.embed()
+    if exit_at_end:
+        sys.exit()
+
 def inspect_structure(obj):
+    """
+    For APIs lacking good documentation.
+    """
+
     print(f"Type: {type(obj)}")
 
     try:

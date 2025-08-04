@@ -160,8 +160,8 @@ def parse_into_scene(scene: gs.Scene):
                 decompose_nonconvex=True,
                 coacd_options=gs.options.CoacdOptions(threshold=0.01, preprocess_resolution=100),
             ),
-            # surface=gs.surfaces.Default(vis_mode="visual"),
-            surface=gs.surfaces.Default(vis_mode="collision"),
+            surface=gs.surfaces.Default(vis_mode="visual"),
+            # surface=gs.surfaces.Default(vis_mode="collision"),
         )
 
 
