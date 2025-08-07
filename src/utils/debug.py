@@ -1,38 +1,64 @@
 import sys
 import inspect
+from collections import ChainMap
 
 import torch
 import IPython
 import numpy as np
 
 
-def enter_interactive(exit_at_end=False):
+def enter_interactive(exit_at_end=False, stack_depth=1):
     """
     Type `exit` to continue from this point in the code.
+    Use `stack_depth` to get variables down the stack, from other called functions. Only available when using `exit_at_end` for safety.
+
+    Note in stack_depth a last-wins strategy is used to resolved vars with same name.
     """
-    print("="*42)
+
+    print("=" * 42)
     print("Entering interactive mode.")
-    print("-"*42)
+    print("-" * 42)
     if exit_at_end:
         print("Type `exit` to exit the simulation.")
     else:
         print("Type `exit` to continue from this point in the code.")
 
-    # Captures caller's local variables and inject them into the interactive namespace
-    caller_frame = inspect.currentframe().f_back
-    if caller_frame:
-        print(f"Injecting caller's local vars...")
-        print("="*42)
-        caller_locals = caller_frame.f_locals.copy()
-        interactive_namespace = caller_locals.copy()
-        IPython.embed(user_ns=interactive_namespace)
-    else:
-        print(f"Not injecting caller's local vars...")
-        print("="*42)
-        IPython.embed()
+    interactive_namespace = {}
+    if exit_at_end:
+        print(f"Capturing locals from up to {stack_depth + 1} stack frame(s)...")
+        frames = []
+        frame = inspect.currentframe()
+        for _ in range(stack_depth + 1):  # +1, include current frame
+            if frame:
+                frames.append(frame)
+                frame = frame.f_back
+            else:
+                break
 
+        # Merge locals from outermost to innermost (last wins)
+        locals_list = [f.f_locals.copy() for f in reversed(frames)]
+        merged_ns = ChainMap(*locals_list)
+
+        # Filter out d-under variables
+        interactive_namespace = {
+            k: v for k, v in merged_ns.items() if not k.startswith("__")
+        }
+        print(f"Injected variables from {len(locals_list)} frame(s).")
+    else:
+        # Inject only caller's locals only
+        caller_frame = inspect.currentframe().f_back
+        if caller_frame:
+            print("Injecting caller's local vars...")
+            caller_locals = caller_frame.f_locals.copy()
+            interactive_namespace = caller_locals.copy()
+        else:
+            print("Not injecting caller's local vars...")
+
+    print("=" * 42)
+    IPython.embed(user_ns=interactive_namespace)
     if exit_at_end:
         sys.exit()
+
 
 def inspect_structure(obj):
     """

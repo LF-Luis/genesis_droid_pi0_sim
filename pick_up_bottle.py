@@ -45,7 +45,7 @@ COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
 SHOW_ROBOT = True
 SHOW_SCENE_CAMS = True
-RUN_PI0 = True
+RUN_PI0 = True  # True
 
 # Pi0 task prompt
 # task_prompt = "pick up the yellow bottle from the white floor below"
@@ -65,6 +65,7 @@ gs.init(
 
 with perf_timer("Setup scene"):  # 1.24 seconds
     scene, debug_bottle, debug_entity, basket_vis, basket_col = setup_scene()
+    # scene = setup_scene()
 
 if SHOW_SCENE_CAMS:
     with perf_timer("Setup ext cams"):  # 0.000126 seconds
@@ -109,12 +110,13 @@ def steps(n=1):
 
 print("Starting simulation.")
 
-# steps(3)
-steps(1)
+steps(10)
 
 if SHOW_ROBOT:
     from src.sim_utils.robot_pose_debug import RobotPoseDebug
     rD = RobotPoseDebug(franka_manager, scene, verbose=True)
+
+# enter_interactive(exit_at_end=True, stack_depth=1)
 
 loop_step = -1
 done = False

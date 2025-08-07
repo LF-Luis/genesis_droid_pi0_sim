@@ -2,6 +2,11 @@ import os, json
 import numpy as np
 import genesis as gs
 
+"""
+https://huggingface.co/datasets/haosulab/ReplicaCAD
+https://aihabitat.org/docs/habitat-sim/attributesJSON.html
+"""
+
 # Path to ReplicaCAD dataset root
 DATASET_PATH = "/workspace/assets/ReplicaCAD"
 scene_name = "apt_0"  # choose your scene (e.g., "apt_0", etc.)

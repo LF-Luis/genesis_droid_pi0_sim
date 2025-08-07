@@ -8,8 +8,12 @@ See the [LICENSE](./LICENSE) file for more details.
 * 2nd goal: can it learn a new task
 
 ## Assets
+- DROID dataset: https://droid-dataset.github.io/droid/the-droid-dataset
+    - More info: https://huggingface.co/KarlP/droid
+
 - https://huggingface.co/datasets/haosulab/ReplicaCAD
     - It's a cleaned up/corrected version of https://huggingface.co/datasets/ai-habitat/ReplicaCAD_dataset
+    - Attributes schema: https://aihabitat.org/docs/habitat-sim/attributesJSON.html
 
 ```text
 frl_apartment_basket_cv_decomp.glb has multiple convex-hull sub-meshes that Genesis doesn't natively read as individual pieces.
@@ -36,7 +40,8 @@ Start model server
 - pi0_droid: Diffusion π0-DROID model
 
 ```bash
-cd openpi && uv run scripts/serve_policy.py policy:checkpoint \
+cd openpi
+uv run scripts/serve_policy.py policy:checkpoint \
     --policy.config=pi0_fast_droid \
     --policy.dir=s3://openpi-assets/checkpoints/pi0_fast_droid
 ```
@@ -45,15 +50,15 @@ cd openpi && uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-80-129-97.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-89-87-43.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-54-80-129-97.compute-1.amazonaws.com:8443#console
+ec2-54-89-87-43.compute-1.amazonaws.com:8443#console
 # Rsync code
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-54-80-129-97.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-54-89-87-43.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
 ```
 
 ```bash
