@@ -10,6 +10,14 @@ See the [LICENSE](./LICENSE) file for more details.
 ## Assets
 - DROID dataset: https://droid-dataset.github.io/droid/the-droid-dataset
     - More info: https://huggingface.co/KarlP/droid
+** Reproducing the DROID dataset setup:**
+- Franka Emika Panda
+- 2F-85 Robotiq Gripper
+    - https://github.com/google-deepmind/mujoco_menagerie
+        - https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotiq_2f85
+        - https://github.com/google-deepmind/mujoco_menagerie/tree/main/robotiq_2f85_v4
+- (scene cam) Zed 2 (match intrinsic values)
+- (wrist cam) Zed Mini (match intrinsic values)
 
 - https://huggingface.co/datasets/haosulab/ReplicaCAD
     - It's a cleaned up/corrected version of https://huggingface.co/datasets/ai-habitat/ReplicaCAD_dataset
@@ -50,19 +58,39 @@ uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-89-87-43.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-54-89-87-43.compute-1.amazonaws.com:8443#console
+ec2-98-81-111-215.compute-1.amazonaws.com:8443#console
 # Rsync code
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-54-89-87-43.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+```
+
+```bash
+# Run through ssh
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com
+who  # get user DISPLAY, e.g. ":1"
+`export DISPLAY=:1`
+xhost +local:root
+docker start dev-genesis
+docker exec -it dev-genesis /bin/bash
+python pick_up_bottle.py
+```
+
+```bash
+# Proxy through ssh
+ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com
+# Start DCV session on Macbook
+localhost:8443
 ```
 
 ```bash
 xhost +local:root
+docker start dev-genesis
+docker exec -it dev-genesis /bin/bash
 # First time you run it may take a few minutes to load all assets into the sim. Subsequent should be much faster, under one min or so.
 python pick_up_bottle.py
 ```
