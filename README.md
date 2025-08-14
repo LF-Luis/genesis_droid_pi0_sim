@@ -58,22 +58,33 @@ uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-225-27-248.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-98-81-111-215.compute-1.amazonaws.com:8443#console
+ec2-54-225-27-248.compute-1.amazonaws.com:8443#console
 # Rsync code
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-54-225-27-248.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
 ```
 
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-225-27-248.compute-1.amazonaws.com
+sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
+# Enter desktop using DCV: ec2-54-225-27-248.compute-1.amazonaws.com:8443#console
+# ./enter_genesis.sh
+./Desktop/Genesis-main/openpi/enter_genesis.sh
+python openpi/pick_up_bottle.py
+```
+
+```bash
+# Run through ssh
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-225-27-248.compute-1.amazonaws.com
+sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
 who  # get user DISPLAY, e.g. ":1"
-`export DISPLAY=:1`
+export DISPLAY=:1
 xhost +local:root
 docker start dev-genesis
 docker exec -it dev-genesis /bin/bash
@@ -82,7 +93,7 @@ python pick_up_bottle.py
 
 ```bash
 # Proxy through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-98-81-111-215.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-54-225-27-248.compute-1.amazonaws.com
 # Start DCV session on Macbook
 localhost:8443
 ```
@@ -100,3 +111,9 @@ python pick_up_bottle.py
 import IPython
 IPython.embed()
 ```
+
+### Resources
+- [Deepmind's mujoco_menagerie](https://github.com/google-deepmind/mujoco_menagerie), open-source robot sim assets
+
+### Other Resources not used here, but helpful
+- [robot_descriptions](https://github.com/robot-descriptions/robot_descriptions.py), python package

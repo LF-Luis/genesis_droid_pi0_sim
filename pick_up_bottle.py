@@ -77,7 +77,7 @@ if SHOW_ROBOT:
 
 # Load Frank with no EEF
 franka = scene.add_entity(
-    gs.morphs.MJCF(file="xml/franka_emika_panda/panda_nohand.xml"),
+    gs.morphs.MJCF(file="/workspace/openpi/assets/franka_emika_panda/panda_nohand.xml"),
 )
 
 # Load default Franka EEF
@@ -91,14 +91,14 @@ franka = scene.add_entity(
 # scene.link_entities(franka, hand, "attachment", "hand")
 
 # Load default Robotiq-2F85 EEF
-# gripper_path = "/workspace/assets/robotiq_2f85_v4/mjx_2f85.xml"
+gripper_path = "/workspace/openpi/assets/robotiq_2f85_v4/mjx_2f85.xml"
 """
 ['link0', 'link1', 'link2', 'link3', 'link4', 'link5', 'link6', 'link7', 'attachment']
 ['link0_joint', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7', 'attachment_joint']
 ['base', 'left_driver', 'left_spring_link', 'right_driver', 'right_spring_link', 'left_coupler', 'left_follower', 'right_coupler', 'right_follower', 'left_pad', 'right_pad']
 ['base_joint', 'left_driver_joint', 'left_spring_link_joint', 'right_driver_joint', 'right_spring_link_joint', 'left_coupler_joint', 'left_follower', 'right_coupler_joint', 'right_follower_joint', 'left_pad_joint', 'right_pad_joint']
 """
-gripper_path = "/workspace/assets/robotiq_2f85_v4/2f85.xml"
+# gripper_path = "/workspace/assets/robotiq_2f85_v4/2f85.xml"
 """
 ['link0', 'link1', 'link2', 'link3', 'link4', 'link5', 'link6', 'link7', 'attachment']
 ['base', 'left_driver', 'left_spring_link', 'right_driver', 'right_spring_link', 'left_coupler', 'left_follower', 'right_coupler', 'right_follower', 'left_pad', 'right_pad']
