@@ -59,6 +59,7 @@
     <body name="base" childclass="2f85" quat="1 0 0 -1">
       <inertial mass="0.777441" pos="0 -2.70394e-05 0.0354675" quat="1 0 0 0"
         diaginertia="0.000260285 0.000225381 0.000152708"/>
+      <joint name="base_free" type="free"/>
       <geom class="visual" pos="0 0 0.0108" quat="0 0 0 1"   mesh="base"/>
       <geom class="visual" pos="0 0 0.004" quat="1 -1 0 0"   mesh="base_coupling"/>
       <geom class="visual" pos="0 0 0.0108" quat="1 0 0 0"  material="metal" mesh="c-a01-85-open"/>
