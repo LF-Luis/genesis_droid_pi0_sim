@@ -116,4 +116,5 @@ IPython.embed()
 - [Deepmind's mujoco_menagerie](https://github.com/google-deepmind/mujoco_menagerie), open-source robot sim assets
 
 ### Other Resources not used here, but helpful
-- [robot_descriptions](https://github.com/robot-descriptions/robot_descriptions.py), python package
+- [robot_descriptions](https://github.com/robot-descriptions/robot_descriptions.py), python package to import open-source robot descriptions
+- [PickNikRobotics/ros2_robotiq_gripper](https://github.com/PickNikRobotics/ros2_robotiq_gripper/tree/main), has assets for the Robotiq gripper, packaged for ROS2

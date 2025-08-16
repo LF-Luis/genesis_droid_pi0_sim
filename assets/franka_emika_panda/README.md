@@ -1,3 +1,9 @@
+## [2025-08-10] -- @LF-luis changes
+- ...
+    - This file was originally fetched from [Genesis-73f9d2](https://github.com/Genesis-Embodied-AI/Genesis/tree/73f9d2d2ba958ebd64d57e18ebd9480d14346895/genesis/assets/xml/franka_emika_panda)
+
+############################################################################################
+
 # Franka Emika Panda Description (MJCF)
 
 Requires MuJoCo 2.3.3 or later.

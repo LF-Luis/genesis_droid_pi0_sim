@@ -57,6 +57,7 @@
 
   <worldbody>
     <body name="base" childclass="2f85" quat="1 0 0 -1">
+      <joint name="base_free" type="free"/>
       <inertial mass="0.777441" pos="0 -2.70394e-05 0.0354675" quat="1 0 0 0"
         diaginertia="0.000260285 0.000225381 0.000152708"/>
       <joint name="base_free" type="free"/>
