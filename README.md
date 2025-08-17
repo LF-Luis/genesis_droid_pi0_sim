@@ -41,6 +41,34 @@ Genesis doesn’t automatically use each sub-mesh as its own collider. Instead, 
 Current versions being used:
 - [Genesis-5cc3d5](https://github.com/Genesis-Embodied-AI/Genesis/commit/5cc3d5606c3c1e08eb3c628957e76e8e8512ae13)
 - [OpenPi-92b108](https://github.com/Physical-Intelligence/openpi/commit/92b10824421d6d810eb1e398330acd79dc7cd934)
+- Latest [Genesis-e064dbc](https://github.com/Genesis-Embodied-AI/Genesis/tree/e064dbc8468d8fd47c0561218d8efd14565144c9)
+    - `docker build -t genesis:e064dbc -f docker/Dockerfile docker`
+        ```bash
+        who
+        export DISPLAY=:1
+        xhost +local:root
+        docker run --gpus all -dit \
+            -e DISPLAY=$DISPLAY \
+            -v /dev/dri:/dev/dri \
+            -v /tmp/.X11-unix/:/tmp/.X11-unix \
+            -v $PWD:/workspace \
+            --name genesis-e064dbc \
+            genesis:e064dbc
+        docker exec -it genesis-e064dbc /bin/bash
+
+        # on mac
+        rsync -avz --progress \
+            --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
+            -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
+            "$PWD/" \
+            ubuntu@ec2-13-218-16-43.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/luis_dev/
+        ```
+        ```bash
+        # extra installs
+        pip install py-cpuinfo
+        pip install trimesh  # This should have been in the installation...?
+        pip install z3-solver
+        ```
 
 ### Start OpenPi local server
 Start model server
@@ -58,23 +86,23 @@ uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-208-195-159.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-13-218-16-43.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-54-208-195-159.compute-1.amazonaws.com:8443#console
+ec2-13-218-16-43.compute-1.amazonaws.com:8443#console
 # Rsync code
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-54-208-195-159.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-13-218-16-43.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
 ```
 
-
+**More automated:**
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-208-195-159.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-13-218-16-43.compute-1.amazonaws.com
 sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
-# Enter desktop using DCV: ec2-54-208-195-159.compute-1.amazonaws.com:8443#console
+# Enter desktop using DCV: ec2-13-218-16-43.compute-1.amazonaws.com:8443#console, then move on to next steps
 # ./enter_genesis.sh
 ./Desktop/Genesis-main/openpi/enter_genesis.sh
 python openpi/pick_up_bottle.py
@@ -82,7 +110,7 @@ python openpi/pick_up_bottle.py
 
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-54-208-195-159.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-13-218-16-43.compute-1.amazonaws.com
 sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
 who  # get user DISPLAY, e.g. ":1"
 export DISPLAY=:1
@@ -94,7 +122,7 @@ python pick_up_bottle.py
 
 ```bash
 # Proxy through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-54-208-195-159.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-13-218-16-43.compute-1.amazonaws.com
 # Start DCV session on Macbook
 localhost:8443
 ```
