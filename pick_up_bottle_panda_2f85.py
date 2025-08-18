@@ -26,6 +26,7 @@ scene = gs.Scene(
         # enable_self_collision=False is already the default (good)
     ),
     vis_options=gs.options.VisOptions(show_cameras=False),
+    show_FPS = False,  # Don't print live FPS
     renderer=gs.renderers.Rasterizer()
 )
 # Add a ground plane
@@ -83,28 +84,40 @@ init_franka_pos = [1, 1, 0, 0, 0, 1, 0, 0]
 panda.set_dofs_position(position=init_franka_pos, dofs_idx_local=dofs_idx, zero_velocity=True)
 scene.reset(state=scene.get_state())
 
+panda.control_dofs_position(
+    np.array([
+        0.0,
+        -1 / 5 * np.pi,
+        0.0,
+        -4 / 5 * np.pi,
+        0.0,
+        3 / 5 * np.pi,
+        0.0,
+        0.0,
+    ]),
+    dofs_idx,
+)
 
-# PD control
-for i in range(750):
-    if i == 0:
-        panda.control_dofs_position(
-            # np.array([1, 1, 0, 0, 0, 1, 0, 0]),
-            np.array([1, 1, 0, 0, 0, 0, 0, 0]),
-            dofs_idx,
-        )
-    elif i == 250:
-        panda.control_dofs_position(
-            np.array([-1, 0.8, 1, -2, 1, 0.5, -0.5, 0]),
-            dofs_idx,
-        )
-    elif i == 500:
-        panda.control_dofs_position(
-            # np.array([0, 0, 0, 0, 0, 1, 0, 0]),
-            np.array([0, 0, 0, 0, 0, 0, 0, 0]),
-            dofs_idx,
-        )
-
-    scene.step()
+# # PD control
+# for i in range(750):
+#     if i == 0:
+#         panda.control_dofs_position(
+#             # np.array([1, 1, 0, 0, 0, 1, 0, 0]),
+#             np.array([1, 1, 0, 0, 0, 0, 0, 0]),
+#             dofs_idx,
+#         )
+#     elif i == 250:
+#         panda.control_dofs_position(
+#             np.array([-1, 0.8, 1, -2, 1, 0.5, -0.5, 0]),
+#             dofs_idx,
+#         )
+#     elif i == 500:
+#         panda.control_dofs_position(
+#             # np.array([0, 0, 0, 0, 0, 1, 0, 0]),
+#             np.array([0, 0, 0, 0, 0, 0, 0, 0]),
+#             dofs_idx,
+#         )
+#     scene.step()
 
 
 # enter_interactive(exit_at_end=True, stack_depth=1)  # ‼️ DEBUG MODE ‼️

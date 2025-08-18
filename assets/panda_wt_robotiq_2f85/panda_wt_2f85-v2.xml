@@ -211,7 +211,7 @@
                     <geom mesh="link7_7" material="white" class="panda/visual"/>
                     <geom mesh="link7_c" class="panda/collision"/>
 
-                    <!-- Robotiq mount: same transform as "attachment" in panda_nohand -->
+                    <!-- Robotiq mount: same transform as "attachment" in Genesis' panda_nohand -->
                     <body name="robotiq_mount" pos="0 0 0.107" quat="0.3826834 0 0 0.9238795">
 
                       <!-- Robotiq 2F85 gripper (from mjx_2f85.xml) -->
