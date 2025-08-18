@@ -53,8 +53,18 @@ def setup_scene():
             camera_fov=60,
             max_FPS=60,
         ),
+        rigid_options=gs.options.RigidOptions(
+            integrator=gs.integrator.implicitfast,
+            constraint_solver=gs.constraint_solver.Newton,
+            iterations=200,           # more constraint iterations
+            ls_iterations=50,
+            tolerance=1e-6,           # tighter convergence
+            contact_resolve_time=0.02 # MuJoCo time-constant; prevents spiky impulses
+            # enable_self_collision=False is already the default (good)
+        ),
         show_FPS = False,  # Don't print live FPS
-        sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
+        # sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
+        sim_options=gs.options.SimOptions(dt=0.002),  # 2ms step, mainly for the gripper stability
         vis_options=gs.options.VisOptions(show_cameras=False),  # show where cameras are and where they're facing
         renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
     )

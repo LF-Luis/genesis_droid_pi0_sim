@@ -47,8 +47,9 @@ Current versions being used:
         docker compose -f scripts/docker/compose.yml up --build
         # Once server starts hit ctrl+c and run the following
         # Subsequent runs
-        docker start docker-openpi_server-1
-        docker exec -it docker-openpi_server-1 /bin/bash
+        docker compose -f scripts/docker/compose.yml run -d --name openpi \
+            openpi_server bash -lc "tail -f /dev/null"
+        docker exec -it openpi /bin/bash
         ```
 - Latest [Genesis-e064dbc](https://github.com/Genesis-Embodied-AI/Genesis/tree/e064dbc8468d8fd47c0561218d8efd14565144c9)
     - `docker build -t genesis:e064dbc -f docker/Dockerfile docker`
@@ -62,7 +63,7 @@ Current versions being used:
             -v /dev/dri:/dev/dri \
             -v /tmp/.X11-unix/:/tmp/.X11-unix \
             -v $PWD:/workspace \
-            --name genesis-e064dbc \
+            --name genesis \
             --network host \
             genesis:e064dbc
 
@@ -78,35 +79,24 @@ Current versions being used:
             ubuntu@ec2-34-207-178-31.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/luis_dev/
         ```
         ```bash
-        # extra installs
-        pip install py-cpuinfo
-        pip install trimesh  # This should have been in the installation...?
-        pip install z3-solver
+        # In Genesis-e064dbc dir:
+        mkdir ext
+        cd ext
+        git clone git@github.com:Physical-Intelligence/openpi.git  # git-hash df866f
+        cd openpi
+        pip install -e . --no-deps
+        pip install -e packages/openpi-client
         ```
 
 ### Start OpenPi local server
-
-```bash
-docker compose -f scripts/docker/compose.yml up --build
-```
-
 Start model server
 - pi0_fast_droid: Autoregressive π0-FAST-DROID model
 - pi0_droid: Diffusion π0-DROID model
-
 ```bash
-cd openpi
+docker exec -it openpi /bin/bash
 uv run scripts/serve_policy.py policy:checkpoint \
     --policy.config=pi0_fast_droid \
-    --policy.dir=s3://openpi-assets/checkpoints/pi0_fast_droid
-
-uv run scripts/serve_policy.py policy:checkpoint \
-  --policy.config=pi0_fast_droid \
-  --policy.dir=gs://openpi-assets/checkpoints/pi0_fast_droid
-
-uv run serve_policy.py policy:checkpoint \
-    --policy.config=pi0_fast_droid \
-    --policy.dir=s3://openpi-assets/checkpoints/pi0_fast_droid
+    --policy.dir=gs://openpi-assets/checkpoints/pi0_fast_droid
 ```
 
 ## Systems
@@ -121,7 +111,9 @@ rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-34-207-178-31.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-main/openpi/
+    ubuntu@ec2-34-207-178-31.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/dev/
+
+
 ```
 
 **More automated:**

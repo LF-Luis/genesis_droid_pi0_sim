@@ -62,7 +62,7 @@
     <material name="metal" rgba="0.58 0.58 0.58 1"/>
     <material name="silicone" rgba="0.1882 0.1882 0.1882 1"/>
     <material name="black_rq" rgba="0.149 0.149 0.149 1"/>
-    <!-- Panda collision meshes -->
+    <!-- collision meshes for panda arm -->
     <mesh name="link0_c" file="link0.stl"/>
     <mesh name="link1_c" file="link1.stl"/>
     <mesh name="link2_c" file="link2.stl"/>
@@ -73,7 +73,7 @@
     <mesh name="link5_c2" file="link5_collision_2.obj"/>
     <mesh name="link6_c" file="link6.stl"/>
     <mesh name="link7_c" file="link7.stl"/>
-    <!-- Panda visual meshes -->
+    <!-- visual meshes for panda arm -->
     <mesh file="link0_0.obj"/>
     <mesh file="link0_1.obj"/>
     <mesh file="link0_2.obj"/>
@@ -123,7 +123,7 @@
     <mesh file="link7_5.obj"/>
     <mesh file="link7_6.obj"/>
     <mesh file="link7_7.obj"/>
-    <!-- Robotiq gripper meshes -->
+    <!-- robotiq 2f85 gripper component meshes -->
     <mesh file="base.stl"/>
     <mesh file="base_coupling.stl"/>
     <mesh file="c-a01-85-open.stl"/>
@@ -226,7 +226,7 @@
                     <geom mesh="link7_6" material="dark_grey" class="panda/visual"/>
                     <geom mesh="link7_7" material="white" class="panda/visual"/>
                     <geom mesh="link7_c" class="panda/collision"/>
-                    <!-- Robotiq 2F-85 gripper mounted on link7: -->
+                    <!-- 2F-85 gripper attached to end effector -->
                     <body name="base" childclass="2f85" quat="0.70710678 0 0 0.70710678" pos="0 0 0.107">
                       <inertial mass="0.777441" pos="0 -2.70394e-05 0.0354675" quat="1 0 0 0"
                                diaginertia="0.000260285 0.000225381 0.000152708"/>
@@ -235,7 +235,7 @@
                       <geom class="visual" pos="0 0 0.0108" quat="1 0 0 0" material="metal" mesh="c-a01-85-open"/>
                       <geom name="hand_capsule" class="collision" type="capsule" conaffinity="1"
                             size="0.04 0.06" rgba="1 1 1 0.3" pos="0 0 0.01"/>
-                      <!-- Left-side four-bar linkage -->
+                      <!-- left finger mechanism -->
                       <body name="left_driver" pos="-0.0306011 0.00475 0.0657045" quat="1 -1 0 0">
                         <inertial mass="0.00899563" pos="0 0.0177547 0.00107314" quat="0.681301 0.732003 0 0"
                                  diaginertia="1.72352e-06 1.60906e-06 3.22006e-07"/>
@@ -271,7 +271,7 @@
                           </body>
                         </body>
                       </body>
-                      <!-- Right-side four-bar linkage -->
+                      <!-- right finger mechanism -->
                       <body name="right_driver" pos="0.0306011 -0.00475 0.0657045" quat="0 0 -1 1">
                         <inertial mass="0.00899563" pos="0 0.0177547 0.00107314" quat="0.681301 0.732003 0 0"
                                  diaginertia="1.72352e-06 1.60906e-06 3.22006e-07"/>

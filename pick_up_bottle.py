@@ -43,9 +43,9 @@ Cameras info: https://www.stereolabs.com/store/products/zed-mini
 # Setup Params
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
-SHOW_ROBOT = False
-SHOW_SCENE_CAMS = False  # True
-RUN_PI0 = False  # True
+SHOW_ROBOT = True
+SHOW_SCENE_CAMS = True
+RUN_PI0 = True
 
 # Pi0 task prompt
 # task_prompt = "pick up the yellow bottle from the white floor below"
@@ -75,152 +75,49 @@ if SHOW_ROBOT:
     with perf_timer("Setup Franka"):  # 1.08 secs
         franka_manager = FrankaManager(scene)
 
-# Load Frank with no EEF
-franka = scene.add_entity(
-    gs.morphs.MJCF(file="/workspace/openpi/assets/franka_emika_panda/panda_nohand.xml"),
-)
-
-# Load default Franka EEF
-# hand = scene.add_entity(
-#     gs.morphs.MJCF(file="xml/franka_emika_panda/hand.xml"),
+# # Load Panda
+# franka = scene.add_entity(  # RigidEntity
+#     gs.morphs.MJCF(file="/workspace/dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"),
 # )
-# """
-# ['link0', 'link1', 'link2', 'link3', 'link4', 'link5', 'link6', 'link7', 'attachment']
-# ['hand', 'left_finger', 'right_finger']
-# """
-# scene.link_entities(franka, hand, "attachment", "hand")
-
-# Load default Robotiq-2F85 EEF
-gripper_path = "/workspace/openpi/assets/robotiq_2f85_v4/mjx_2f85.xml"
-"""
-['link0', 'link1', 'link2', 'link3', 'link4', 'link5', 'link6', 'link7', 'attachment']
-['link0_joint', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'joint7', 'attachment_joint']
-['base', 'left_driver', 'left_spring_link', 'right_driver', 'right_spring_link', 'left_coupler', 'left_follower', 'right_coupler', 'right_follower', 'left_pad', 'right_pad']
-['base_joint', 'left_driver_joint', 'left_spring_link_joint', 'right_driver_joint', 'right_spring_link_joint', 'left_coupler_joint', 'left_follower', 'right_coupler_joint', 'right_follower_joint', 'left_pad_joint', 'right_pad_joint']
-"""
-# gripper_path = "/workspace/assets/robotiq_2f85_v4/2f85.xml"
-"""
-['link0', 'link1', 'link2', 'link3', 'link4', 'link5', 'link6', 'link7', 'attachment']
-['base', 'left_driver', 'left_spring_link', 'right_driver', 'right_spring_link', 'left_coupler', 'left_follower', 'right_coupler', 'right_follower', 'left_pad', 'right_pad']
-"""
-# gripper_path = "/workspace/assets/robotiq_2f85/2f85.xml"
-"""
-['link0', 'link1', 'link2', 'link3', 'link4', 'link5', 'link6', 'link7', 'attachment']
-['base_mount', 'base', 'right_driver', 'right_spring_link', 'left_driver', 'left_spring_link', 'right_coupler', 'right_follower', 'left_coupler', 'left_follower', 'right_pad', 'left_pad', 'right_silicone_pad', 'left_silicone_pad']
-"""
-
-hand = scene.add_entity(
-    gs.morphs.MJCF(file=gripper_path),
-)
-# print(f'type(franka): {type(franka)}')  # RigidEntity
-# print(f'type(hand): {type(hand)}')  # RigidEntity
-print([link.name for link in franka.links])
-print([joint.name for joint in franka.joints])
-print([link.name for link in hand.links])
-print([joint.name for joint in hand.joints])
-scene.link_entities(franka, hand, "attachment", "base")
-# scene.link_entities(franka, hand, "attachment", "base_mount")
-
-
+# print([link.name for link in franka.links])
+# print([joint.name for joint in franka.joints])
 
 with perf_timer("Build scene"):  # 21.28 secs
     # Build the scene to finalize loading of entities
     scene.build(compile_kernels = COMPILE_KERNELS)
 
+# arm_joints_name = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint"]
+# arm_dofs_idx = [franka.get_joint(name).dof_idx_local for name in arm_joints_name]
+# print(f"arm_dofs_idx: {arm_dofs_idx}")
 
-arm_joints_name = ("joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7")
-arm_dofs_idx = [franka.get_joint(name).dof_idx_local for name in arm_joints_name]
-print(f"arm_dofs_idx: {arm_dofs_idx}")  # [0, 1, 2, 3, 4, 5, 6]
-
-# Set arm control gains
-franka.set_dofs_kp(
-    np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000]),
-    arm_dofs_idx,
-)
-franka.set_dofs_kv(
-    np.array([450, 450, 350, 350, 200, 200, 200]),
-    arm_dofs_idx,
-)
-franka.set_dofs_force_range(
-    np.array([-87, -87, -87, -87, -12, -12, -12]),
-    np.array([87, 87, 87, 87, 12, 12, 12]),
-    arm_dofs_idx,
-)
-
-gripper_joints_name = ['base_joint', 'left_driver_joint', 'left_spring_link_joint', 'right_driver_joint', 'right_spring_link_joint', 'left_coupler_joint', 'left_follower', 'right_coupler_joint', 'right_follower_joint', 'left_pad_joint', 'right_pad_joint']
-# gripper_dofs_idx = [hand.get_joint(name).dof_idx_local for name in gripper_joints_name]
-# print(f"gripper_dofs_idx: {gripper_dofs_idx}")  # [None, 0, 1, 2, 3, None, 4, None, 5, None, None]
-# gripper_dofs_idx = [0, 1, 2, 3, 4, 5]
-# gripper_dofs_idx = [hand.get_joint("left_driver_joint").dof_idx_local, hand.get_joint("right_driver_joint").dof_idx_local]
-gripper_dofs_idx = [hand.get_joint("left_driver_joint").dof_idx_local]
-print(f"gripper_dofs_idx: {gripper_dofs_idx}")
-
-# # Set gripper control gains
-hand.set_dofs_kp(np.array([50.0]), gripper_dofs_idx)
-hand.set_dofs_kv(np.array([5.0 ]), gripper_dofs_idx)
-hand.set_dofs_force_range(np.array([-5.0]), np.array([5.0]), gripper_dofs_idx)
-# hand.set_dofs_kp(
-#     np.array([100] * len(gripper_dofs_idx)),
-#     gripper_dofs_idx,
+# # Set arm control gains
+# franka.set_dofs_kp(
+#     np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 50]),
+#     arm_dofs_idx,
 # )
-# hand.set_dofs_kv(
-#     np.array([10] * len(gripper_dofs_idx)),
-#     gripper_dofs_idx,
+# franka.set_dofs_kv(
+#     np.array([450, 450, 350, 350, 200, 200, 200, 5]),
+#     arm_dofs_idx,
 # )
-# hand.set_dofs_force_range(
-#     np.array([-100] * len(gripper_dofs_idx)),
-#     np.array([100] * len(gripper_dofs_idx)),
-#     gripper_dofs_idx,
+# franka.set_dofs_force_range(
+#     np.array([-87, -87, -87, -87, -12, -12, -12, -5]),
+#     np.array([87, 87, 87, 87, 12, 12, 12, 5]),
+#     arm_dofs_idx,
 # )
 
-# Set Franka initial state
-init_franka_pos = [1, 1, 0, 0, 0, 1, 0]
-franka.set_dofs_position(position=init_franka_pos, zero_velocity=True)
-scene.reset(state=scene.get_state())
-
-# PD control
-for i in range(750):
-    if i == 0:
-        franka.control_dofs_position(
-            np.array([1, 1, 0, 0, 0, 1, 0]),
-            arm_dofs_idx,
-        )
-        """
-franka.control_dofs_position(
-    np.array([1, 1, 0, 0, 0, 0, 1]),
-    arm_dofs_idx,
-)
-scene.step()
-        """
-        hand.control_dofs_position(np.array([0.0]), gripper_dofs_idx)
-        # hand.control_dofs_position(
-        #     np.array([0.0] * len(gripper_dofs_idx)),
-        #     gripper_dofs_idx,
-        # )
-    elif i == 250:
-        franka.control_dofs_position(
-            np.array([-1, 0.8, 1, -2, 1, 0.5, -0.5]),
-            arm_dofs_idx,
-        )
-        hand.control_dofs_position(
-            np.array([0.0] * len(gripper_dofs_idx)),
-            gripper_dofs_idx,
-        )
-    elif i == 500:
-        franka.control_dofs_position(
-            np.array([0, 0, 0, 0, 0, 1, 0]),
-            arm_dofs_idx,
-        )
-        hand.control_dofs_position(
-            np.array([0.0] * len(gripper_dofs_idx)),
-            gripper_dofs_idx,
-        )
-
-    scene.step()
-    enter_interactive()
-
-
-
+# franka.control_dofs_position(
+#     np.array([
+#         0.0,
+#         -1 / 5 * np.pi,
+#         0.0,
+#         -4 / 5 * np.pi,
+#         0.0,
+#         3 / 5 * np.pi,
+#         0.0,
+#         0.0,
+#     ]),
+#     arm_dofs_idx,
+# )
 
 if SHOW_SCENE_CAMS:
     # Move camera transforms to be positioned relative to robot base, but keep world orientation
@@ -253,7 +150,8 @@ def steps(n=1):
 
 print("Starting simulation.")
 
-steps(10)
+steps(250)
+# enter_interactive(exit_at_end=True, stack_depth=1)
 
 if SHOW_ROBOT:
     from src.sim_utils.robot_pose_debug import RobotPoseDebug
@@ -367,17 +265,14 @@ try:
             # print(f"start gripper_position: {gripper_position}")
             # print(f"action: {action}")
 
+            franka_act = np.zeros(8)
+            franka_act = joint_positions + action
+
             # Gripper is considered open when the action value is greater than 0.5
-
-            franka_act = np.zeros(9)
-            franka_act[:7] = joint_positions + action[:7]
-            # franka_act[7:9] = gripper_position + action[7]
-
-            # Open/close is opposite in Genesis URDF of Franka?
             if action[-1].item() > 0.5:
-                franka_act[7:9] = 0.0
+                franka_act[7] = 1.0
             else:
-                franka_act[7:9] = 0.6  # 1.0
+                franka_act[7] = 0.0
 
             # print(f"final franka_act: {franka_act}")
             franka_manager.set_joints_and_gripper_pos(franka_act)

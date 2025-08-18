@@ -11,6 +11,7 @@ from src.sim_utils.transformations import quaternion_multiply
 Constants for frank_manager.py
 """
 
+""" ORIGinal values
 MUJOCO_FILE = "xml/franka_emika_panda/panda.xml"
 # BASE_POS = (0, 0, 0)
 BASE_POS = [0., -0.8, 0.]
@@ -32,6 +33,32 @@ HOME_POS = np.array([-3.9809e-05, -5.5633e-01,  6.7885e-04, -2.6390e+00, -1.9741
                      2.2822e+00,  7.8514e-01,  3.9988e-02,  4.0000e-02])  # manually tuned
 
 HOME_POS_STEPS = 50  # Steps to wait for stabilization
+"""
+
+
+MUJOCO_FILE = "/workspace/dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"
+
+BASE_POS = [0., -0.8, 0.]
+# Robot joints: 7 arm joints + 1 gripper driver actuator joint
+JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint"]
+END_EFFECTOR_NAME = "base"
+# Links PD gains
+PROPORTIONAL_GAINS = np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 50])
+VELOCITY_GAINS = np.array([450, 450, 350, 350, 200, 200, 200, 5])
+# Links force ranges
+FORCE_RANGES_LOWER = np.array([-87, -87, -87, -87, -12, -12, -12, -5])
+FORCE_RANGES_UPPER = np.array([87, 87, 87, 87, 12, 12, 12, 5])
+HOME_POS = np.array([
+    0.0,
+    -1 / 5 * np.pi,
+    0.0,
+    -4 / 5 * np.pi,
+    0.0,
+    3 / 5 * np.pi,
+    0.0,
+    0.0,
+])
+HOME_POS_STEPS = 150  # Steps to wait for stabilization
 
 # Cam config values
 CAM_RES = (1280, 720)  # Zed mini at 60 fps (this is for the wrist cam)

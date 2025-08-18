@@ -1,7 +1,7 @@
 import torch
 import genesis as gs
 
-from sim_utils.transformations import get_camera_transform
+from src.sim_utils.transformations import get_camera_transform
 from src.sim_entities.franka_manager_const import (
     MUJOCO_FILE, BASE_POS, JOINT_NAMES, END_EFFECTOR_NAME, PROPORTIONAL_GAINS,
     VELOCITY_GAINS, FORCE_RANGES_LOWER, FORCE_RANGES_UPPER, HOME_POS, HOME_POS_STEPS,

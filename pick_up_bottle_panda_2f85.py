@@ -14,7 +14,6 @@ scene = gs.Scene(
         camera_fov=60,
         max_FPS=60,
     ),
-    # ↓↓↓ main fixes ↓↓↓
     sim_options=gs.options.SimOptions(dt=0.002),  # 2 ms step like Menagerie scenes
     rigid_options=gs.options.RigidOptions(
         integrator=gs.integrator.implicitfast,
@@ -46,7 +45,7 @@ bottle = scene.add_entity(
 
 # Load Panda with 2F85 gripper
 panda = scene.add_entity(  # returns RigidEntity
-    gs.morphs.MJCF(file="/workspace/luis_dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"),
+    gs.morphs.MJCF(file="/workspace/dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"),
     # gs.morphs.MJCF(file="/workspace/luis_dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85-v2.xml"),
 )
 print([link.name for link in panda.links])
