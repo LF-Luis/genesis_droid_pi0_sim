@@ -32,7 +32,7 @@ class FrankaManager:
             # surface=gs.surfaces.Default(vis_mode="collision"),
         )
 
-        self._end_effector = self._franka.get_link(END_EFFECTOR_NAME)
+        self._end_effector = self._franka.get_link(name=END_EFFECTOR_NAME)
         self.dofs_idx = [self._franka.get_joint(name).dof_idx_local for name in JOINT_NAMES]
 
         # Wrist camera will be attached to the robot's wrist
@@ -48,6 +48,16 @@ class FrankaManager:
         print(f"Franka's DoF idx: {self.dofs_idx}")
         print(f"Franka Wrist Cam Intrinsics: \n{self._wrist_camera.intrinsics}")
         print(f"Franka running in device: {gs.device}")
+
+
+        from genesis.utils import geom as gu
+        import numpy as np
+
+        pos_offset = np.array([ 0.011, -0.031, -0.074 ])
+        rot_offset = np.array([-0.409, -0.420,  0.570,  0.576])  # (w,x,y,z)
+        offset_T = gu.trans_quat_to_T(pos_offset, rot_offset)  # [qw, qx, qy, qz]
+
+        self._wrist_camera.attach(self, rigid_link=self._end_effector, offset_T=offset_T)
 
     def _set_control_params(self):
         # Setting control parameters

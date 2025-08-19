@@ -39,15 +39,16 @@ HOME_POS_STEPS = 50  # Steps to wait for stabilization
 MUJOCO_FILE = "/workspace/dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"
 
 BASE_POS = [0., -0.8, 0.]
-# Robot joints: 7 arm joints + 1 gripper driver actuator joint
+# Robot joints: 7 arm joints + 1 gripper driver actuator-joint
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint"]
 END_EFFECTOR_NAME = "base"
 # Links PD gains
-PROPORTIONAL_GAINS = np.array([4500, 4500, 3500, 3500, 2000, 2000, 2000, 50])
-VELOCITY_GAINS = np.array([450, 450, 350, 350, 200, 200, 200, 5])
+PROPORTIONAL_GAINS = np.array([400, 400, 400, 400, 400, 400, 400,   15])
+VELOCITY_GAINS     = np.array([ 80,  80,  80,  80,  80,  80,  80,    5])
 # Links force ranges
-FORCE_RANGES_LOWER = np.array([-87, -87, -87, -87, -12, -12, -12, -5])
-FORCE_RANGES_UPPER = np.array([87, 87, 87, 87, 12, 12, 12, 5])
+FORCE_RANGES_LOWER = np.array([-87, -87, -87, -87, -12, -12, -12, -120])
+FORCE_RANGES_UPPER = np.array([ 87,  87,  87,  87,  12,  12,  12,  120])
+
 HOME_POS = np.array([
     0.0,
     -1 / 5 * np.pi,

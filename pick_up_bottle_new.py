@@ -7,31 +7,11 @@ from src.utils.perf_timer import perf_timer
 from src.utils.debug import enter_interactive #, inspect_structure
 from src.sim_utils.cam_pose_debug import CamPoseDebug
 from src.sim_entities.franka_manager import FrankaManager
-from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T  # , EXT_CAM_2_T
-# from src.scenes.replicad_scene import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
-# from src.scenes.replicad_scene_2 import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
+from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T
 
 
 from src.sim_utils.transformations import move_relative_to_frame
 import torch
-
-
-import gc
-def cleanup_and_recreate_pi0_client():
-    """
-    Completely garbage collect the pi0_model_client and create a new instance when client becomes unresponsive
-    """
-    global pi0_model_client
-    # Delete the reference
-    if 'pi0_model_client' in globals():
-        del pi0_model_client
-    # Force garbage collection
-    gc.collect()
-    # Create a new instance
-    pi0_model_client = websocket_client_policy.WebsocketClientPolicy(host="localhost", port=8000)
-    print("Successfully recreated pi0_model_client")
-    return pi0_model_client
-
 
 """
 Script to pick up a bottle using Franka Panda robot arm in Genesis Sim, being driven by OpenPI model.
@@ -48,10 +28,7 @@ SHOW_SCENE_CAMS = True
 RUN_PI0 = True
 
 # Pi0 task prompt
-# task_prompt = "pick up the yellow bottle from the white floor below"
-# task_prompt = "pick up the bottle from the white floor below"
 task_prompt = "pick up the yellow bottle"
-# task_prompt = "grab the leg of the table"
 
 # Initialize link to OpenPi model, locally hosted
 if RUN_PI0:
@@ -69,7 +46,6 @@ with perf_timer("Setup scene"):  # 1.24 seconds
 
 if SHOW_SCENE_CAMS:
     with perf_timer("Setup ext cams"):  # 0.000126 seconds
-        # ext_cam_1_left, ext_cam_2_left = setup_cams(scene)
         ext_cam_1_left = setup_cams(scene)
 
 if SHOW_ROBOT:
@@ -82,18 +58,20 @@ with perf_timer("Build scene"):  # 21.28 secs
 
 if SHOW_SCENE_CAMS:
     # Move camera transforms to be positioned relative to robot base, but keep world orientation
-    robot_base_pos = franka_manager.get_base_pos()
-    EXT_CAM_1_T_robot_frame = move_relative_to_frame(
-        torch.tensor(EXT_CAM_1_T, device=gs.device),
-        robot_base_pos
-    )
-    # EXT_CAM_2_T_robot_frame = move_relative_to_frame(
-    #     torch.tensor(EXT_CAM_2_T, device=gs.device),
+    # robot_base_pos = franka_manager.get_base_pos()
+    # EXT_CAM_1_T_robot_frame = move_relative_to_frame(
+    #     torch.tensor(EXT_CAM_1_T, device=gs.device),
     #     robot_base_pos
     # )
-    # Set camera poses using the converted transforms
-    ext_cam_1_left.set_pose(transform=EXT_CAM_1_T_robot_frame.cpu().numpy())
-    # ext_cam_2_left.set_pose(transform=EXT_CAM_2_T_robot_frame.cpu().numpy())
+    # # Set camera poses using the converted transforms
+    # ext_cam_1_left.set_pose(transform=EXT_CAM_1_T_robot_frame.cpu().numpy())
+
+    from genesis.utils import geom as gu
+    cam_1_pos = np.array([0.05, 0.57, 0.66])
+    cam_1_quat = np.array([0.805, -0.393, -0.195, 0.399])  # (w,x,y,z)
+    cam_1_T = gu.trans_quat_to_T(cam_1_pos, cam_1_quat)  # [qw, qx, qy, qz]
+    ext_cam_1_left.set_pose(transform=cam_1_T)
+
 
 if SHOW_ROBOT:
     franka_manager.set_to_init_pos()
@@ -107,12 +85,10 @@ def steps(n=1):
             franka_manager.step()
         if SHOW_SCENE_CAMS:
             _ = ext_cam_1_left.render()
-            # _ = ext_cam_2_left.render()
 
 print("Starting simulation.")
 
 steps(250)
-# enter_interactive(exit_at_end=True, stack_depth=1)
 
 if SHOW_ROBOT:
     from src.sim_utils.robot_pose_debug import RobotPoseDebug
@@ -132,7 +108,6 @@ try:
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
         ext_camera_img = ext_cam_1_left.render()[0]  # 0th is the rgb_arr
-        # ext_camera_img_2 = ext_cam_2_left.render()[0]  # 0th is the rgb_arr
         wrist_cam_img = franka_manager.cam_render()[0]  # numpy.ndarray, uint8, Shape: (720, 1280, 3)
 
 
@@ -162,7 +137,6 @@ try:
         # Resize images on the client side to minimize bandwidth, latency, and match training routines.
         # Resizing it to 224x224 (as seen in openpi repo)
         ext_camera_img = image_tools.resize_with_pad(ext_camera_img, 224, 224)
-        ext_camera_img_2 = image_tools.resize_with_pad(ext_camera_img_2, 224, 224)
         wrist_cam_img = image_tools.resize_with_pad(wrist_cam_img, 224, 224)
 
         # # debug
@@ -174,7 +148,6 @@ try:
 
         observation = {
             "observation/exterior_image_1_left": ext_camera_img,
-            "observation/exterior_image_2_left": ext_camera_img_2,
             "observation/wrist_image_left": wrist_cam_img,
             "observation/joint_position": joint_positions,
             "observation/gripper_position": gripper_position,  # must be a single number since it applies to both gripper fingers
