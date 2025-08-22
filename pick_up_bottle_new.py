@@ -68,7 +68,7 @@ if SHOW_SCENE_CAMS:
 
     from genesis.utils import geom as gu
     cam_1_pos = np.array([0.05, 0.57, 0.66])
-    cam_1_quat = np.array([0.805, -0.393, -0.195, 0.399])  # (w,x,y,z)
+    cam_1_quat = np.array([-0.393, -0.195, 0.399, 0.805])  # (w,x,y,z)
     cam_1_T = gu.trans_quat_to_T(cam_1_pos, cam_1_quat)  # [qw, qx, qy, qz]
     ext_cam_1_left.set_pose(transform=cam_1_T)
 
@@ -144,13 +144,18 @@ try:
         # save_img_arr(ext_camera_img, "ext_camera_img.png")
         # save_img_arr(wrist_cam_img, "wrist_cam_img.png")
 
-        gripper_position = np.array([gripper_position[0]])
+        gripper = gripper_position[0]
+        gripper_norm = np.clip(gripper / (np.pi/4), 0.0, 1.0)
+        gripper_norm = np.array([gripper_norm], dtype=np.float32)
+        # gripper_position = np.array([gripper_position[0]])
+        print(f"LF_DEBUG: gripper_position: {gripper_position}, gripper_norm: {gripper_norm}")  # Must end up between 0 and 1
 
         observation = {
             "observation/exterior_image_1_left": ext_camera_img,
             "observation/wrist_image_left": wrist_cam_img,
             "observation/joint_position": joint_positions,
-            "observation/gripper_position": gripper_position,  # must be a single number since it applies to both gripper fingers
+            # "observation/gripper_position": gripper_position,  # must be a single number since it applies to both gripper fingers
+            "observation/gripper_position": gripper_norm,  # must be a single number since it applies to both gripper fingers
             "prompt": task_prompt,
         }
 
@@ -199,19 +204,37 @@ try:
             # print(f"start gripper_position: {gripper_position}")
             # print(f"action: {action}")
 
-            franka_act = np.zeros(8)
-            franka_act = joint_positions + action
+            ############################################
+            ######### Delta joint pos approach #########
+            # franka_act = np.zeros(8)
+            # franka_act = joint_positions + action
+            # # Gripper is considered open when the action value is greater than 0.5
+            # if action[-1].item() > 0.5:
+            #     franka_act[7] = 1.0
+            # else:
+            #     franka_act[7] = 0.0
+            # # print(f"final franka_act: {franka_act}")
+            # franka_manager.set_joints_and_gripper_pos(franka_act)
+            ############################################
+            ############################################
 
-            # Gripper is considered open when the action value is greater than 0.5
-            if action[-1].item() > 0.5:
-                franka_act[7] = 1.0
+            ###############################################
+            ######### Absolute joint pos approach #########
+            arm_targets = action[:7]    # desired joint positions (radians)
+            gripper_cmd = action[7]     # this will be 0.0 or 1.0 from model output
+            print(f"LF_DEBUG: model out, gripper_cmd: {gripper_cmd}")
+            # Map gripper command to actual joint value:
+            if gripper_cmd > 0.5:
+                gripper_target = np.pi / 4  # ~45° in radians, closed
             else:
-                franka_act[7] = 0.0
-
-            # print(f"final franka_act: {franka_act}")
+                gripper_target = 0.0       # open
+            franka_act = np.hstack([arm_targets, [gripper_target]])
             franka_manager.set_joints_and_gripper_pos(franka_act)
+            ###############################################
+            ###############################################
 
-            steps(5)
+            # steps(5)
+            steps(33)
 
         print(f"loop_step: {loop_step} | Done applying inference actions.")
 

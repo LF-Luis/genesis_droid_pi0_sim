@@ -49,16 +49,6 @@ class FrankaManager:
         print(f"Franka Wrist Cam Intrinsics: \n{self._wrist_camera.intrinsics}")
         print(f"Franka running in device: {gs.device}")
 
-
-        from genesis.utils import geom as gu
-        import numpy as np
-
-        pos_offset = np.array([ 0.011, -0.031, -0.074 ])
-        rot_offset = np.array([-0.409, -0.420,  0.570,  0.576])  # (w,x,y,z)
-        offset_T = gu.trans_quat_to_T(pos_offset, rot_offset)  # [qw, qx, qy, qz]
-
-        self._wrist_camera.attach(self, rigid_link=self._end_effector, offset_T=offset_T)
-
     def _set_control_params(self):
         # Setting control parameters
         self._franka.set_dofs_kp(PROPORTIONAL_GAINS, self.dofs_idx)
@@ -69,6 +59,17 @@ class FrankaManager:
         """
         Set control params and reset to an initial position.
         """
+
+        from genesis.utils import geom as gu
+        import numpy as np
+
+        pos_offset = np.array([ 0.011, -0.031, -0.074 ])
+        rot_offset = np.array([-0.420, 0.570, 0.576, -0.409])  # (w,x,y,z)
+        offset_T = gu.trans_quat_to_T(pos_offset, rot_offset)  # [qw, qx, qy, qz]
+
+        self._wrist_camera.attach(rigid_link=self._end_effector, offset_T=offset_T)
+
+
         self._set_control_params()
         # Teleport to position
         self._franka.set_dofs_position(HOME_POS, self.dofs_idx)
@@ -114,11 +115,12 @@ class FrankaManager:
         Set vis = False to skip computing cam location and graphics during movement.
         """
         if vis:
-            cam_t = get_camera_transform(
-                self.get_ee_pos(),
-                self.get_ee_quat(),
-                self._cam_ee_pos_offset,
-                self._cam_ee_rot_offset
-            )
-            self._wrist_camera.set_pose(transform=cam_t.cpu().numpy())
+            # cam_t = get_camera_transform(
+            #     self.get_ee_pos(),
+            #     self.get_ee_quat(),
+            #     self._cam_ee_pos_offset,
+            #     self._cam_ee_rot_offset
+            # )
+            # self._wrist_camera.set_pose(transform=cam_t.cpu().numpy())
+            self._wrist_camera.move_to_attach()
             _ = self._wrist_camera.render()

@@ -38,7 +38,8 @@ HOME_POS_STEPS = 50  # Steps to wait for stabilization
 
 MUJOCO_FILE = "/workspace/dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"
 
-BASE_POS = [0., -0.8, 0.]
+# BASE_POS = [0., -0.8, 0.]
+BASE_POS = [0., 0, 0.]
 # Robot joints: 7 arm joints + 1 gripper driver actuator-joint
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint"]
 END_EFFECTOR_NAME = "base"
