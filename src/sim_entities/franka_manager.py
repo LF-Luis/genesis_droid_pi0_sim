@@ -63,8 +63,9 @@ class FrankaManager:
         from genesis.utils import geom as gu
         import numpy as np
 
-        pos_offset = np.array([ 0.011, -0.031, -0.074 ])
-        rot_offset = np.array([-0.420, 0.570, 0.576, -0.409])  # (w,x,y,z)
+        # Final tuned values for pos_offset and rot_offset
+        pos_offset = np.array([0.03026469, 0.07047331, 0.02246456])
+        rot_offset = np.array([-0.000662797508,  0.000376455792,  0.988124130,  0.153655398])  # (w,x,y,z)
         offset_T = gu.trans_quat_to_T(pos_offset, rot_offset)  # [qw, qx, qy, qz]
 
         self._wrist_camera.attach(rigid_link=self._end_effector, offset_T=offset_T)
@@ -97,14 +98,15 @@ class FrankaManager:
 
     def get_joints_and_gripper_pos(self):
         # Get the current joint and gripper revolute angles in radians
-        dofs_positions = self._franka.get_dofs_position()  # 9 joints, held in CUDA Tensor
+        dofs_positions = self._franka.get_dofs_position(dofs_idx_local=self.dofs_idx)  # 9 joints, held in CUDA Tensor
         joint_positions = dofs_positions[:7]  # First 7 DOFs are the arm joints
         gripper_position = dofs_positions[7:]  # 8th and 9th DOF is the gripper joints
         return joint_positions, gripper_position
 
     def set_joints_and_gripper_pos(self, action):
         # Set the current joint and gripper positions
-        self._franka.control_dofs_position(action, self.dofs_idx)
+        # self._franka.control_dofs_position(action, self.dofs_idx)
+        self._franka.control_dofs_velocity(action, self.dofs_idx)
 
     def cam_render(self):
         return self._wrist_camera.render()

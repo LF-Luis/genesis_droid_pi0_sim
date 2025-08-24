@@ -1,3 +1,5 @@
+import traceback
+
 import numpy as np
 import genesis as gs
 from openpi_client import image_tools
@@ -38,6 +40,7 @@ if RUN_PI0:
 gs.init(
     backend=gs.gpu,
     logging_level="info",
+    # performance_mode=True,  # compilation up to 6x slower (GJK), but runs ~1-5% faster
 )
 
 with perf_timer("Setup scene"):  # 1.24 seconds
@@ -88,7 +91,7 @@ def steps(n=1):
 
 print("Starting simulation.")
 
-steps(250)
+steps(5)
 
 if SHOW_ROBOT:
     from src.sim_utils.robot_pose_debug import RobotPoseDebug
@@ -103,7 +106,7 @@ try:
     while not done:
         loop_step += 1  # Increase logical loop-step (not tied to actual sim step)
 
-        if loop_step % 10 == 0:
+        if loop_step % 10 == 0 and loop_step > 0:
             enter_interactive()
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
@@ -155,7 +158,8 @@ try:
             "observation/wrist_image_left": wrist_cam_img,
             "observation/joint_position": joint_positions,
             # "observation/gripper_position": gripper_position,  # must be a single number since it applies to both gripper fingers
-            "observation/gripper_position": gripper_norm,  # must be a single number since it applies to both gripper fingers
+            "observation/gripper_position": np.array([gripper_position[0]]),  # must be a single number since it applies to both gripper fingers
+            # "observation/gripper_position": gripper_norm,  # must be a single number since it applies to both gripper fingers
             "prompt": task_prompt,
         }
 
@@ -165,7 +169,8 @@ try:
             print(f"loop_step: {loop_step} | Running inference.")
             with perf_timer("Pi0 Inference Time"):
                 model_response = pi0_model_client.infer(observation)
-            actions = model_response["actions"]  # Shape: (10, 8), numpy.float64
+            # actions = model_response["actions"]  # Shape: (10, 8), numpy.float64
+            actions = model_response["actions"][:8]  # LF_DEBUG only using the first 8 actions
         except Exception as e:
             # Pi0 server can fail when it's first started up, so try again by continuing to the next step
             print(f"⚠️ loop_step: {loop_step} | Error running inference. Will try again. Error: {e}")
@@ -192,55 +197,90 @@ try:
         """
         DEBUG: run each action at full step completion to make sure model output makes sense, then run at 20 Hz only
         """
-        print(f"loop_step: {loop_step} | Applying inference actions.")
+
+        chuck_act_start_time = scene.cur_t
+        import time
+        chuck_start_wall_time = time.perf_counter()
+
+        print(f"loop_step: {loop_step}. Sim time: {chuck_act_start_time:.3f} secs | Applying inference actions.")
+
         for i, action in enumerate(actions):
             """
-            Running at 20 Hz = 1/20 secs = 0.05 secs = 50 ms per action
+            when running at dt=0.01
+            Running Pi0 at 20 Hz (per paper) = 1/20 secs = 0.05 secs = 50 ms per action
             Each step is 10ms
             So 5 steps per action
             """
-            print(f"loop_step: {loop_step} | Applying action {i+1}/{len(actions)}")
+            """
+            when running at dt=0.002
+            Running Pi0 at 20 Hz (per paper) = 1/20 secs = 0.05 secs = 50 ms per action
+            Each step is 2ms
+            (50 ms per action) / (2ms per step) = 25
+            So 25 steps per action
+            """
+
+            # print(f"loop_step: {loop_step} | Applying action {i+1}/{len(actions)}")
             # print(f"start joint_positions: {joint_positions}")
             # print(f"start gripper_position: {gripper_position}")
             # print(f"action: {action}")
 
             ############################################
             ######### Delta joint pos approach #########
-            # franka_act = np.zeros(8)
-            # franka_act = joint_positions + action
-            # # Gripper is considered open when the action value is greater than 0.5
-            # if action[-1].item() > 0.5:
-            #     franka_act[7] = 1.0
-            # else:
-            #     franka_act[7] = 0.0
-            # # print(f"final franka_act: {franka_act}")
-            # franka_manager.set_joints_and_gripper_pos(franka_act)
+            # Extract arm joint actions (first 7 elements) and gripper action (8th element)
+            arm_action = action[:7]  # Shape: (7,)
+            gripper_action = action[7]  # Shape: (1,)
+
+            # Apply delta to arm joints
+            # franka_act = joint_positions + arm_action  # Shape: (7,)
+            franka_act = arm_action  # LF_DEBUG -- using velocity actions
+
+            # Handle gripper separately - convert to absolute position
+            if gripper_action > 0.5:
+                gripper_target = np.pi / 4  # ~45° in radians, closed
+            else:
+                gripper_target = 0.0  # open
+
+            # Combine arm joints and gripper (duplicate gripper target for both fingers)
+            franka_act = np.hstack([franka_act, [gripper_target], [gripper_target]])  # Shape: (9,)
+            # print(f"final franka_act: {franka_act}")
+            franka_manager.set_joints_and_gripper_pos(franka_act)
             ############################################
             ############################################
 
             ###############################################
             ######### Absolute joint pos approach #########
-            arm_targets = action[:7]    # desired joint positions (radians)
-            gripper_cmd = action[7]     # this will be 0.0 or 1.0 from model output
-            print(f"LF_DEBUG: model out, gripper_cmd: {gripper_cmd}")
-            # Map gripper command to actual joint value:
-            if gripper_cmd > 0.5:
-                gripper_target = np.pi / 4  # ~45° in radians, closed
-            else:
-                gripper_target = 0.0       # open
-            franka_act = np.hstack([arm_targets, [gripper_target]])
-            franka_manager.set_joints_and_gripper_pos(franka_act)
+            # arm_targets = action[:7]    # desired joint positions (radians)
+            # gripper_cmd = action[7]     # this will be 0.0 or 1.0 from model output
+            # print(f"LF_DEBUG: model out, gripper_cmd: {gripper_cmd}")
+            # # Map gripper command to actual joint value:
+            # if gripper_cmd > 0.5:
+            #     gripper_target = np.pi / 4  # ~45° in radians, closed
+            # else:
+            #     gripper_target = 0.0       # open
+            # franka_act = np.hstack([arm_targets, [gripper_target]])
+            # franka_manager.set_joints_and_gripper_pos(franka_act)
             ###############################################
             ###############################################
 
+            act_start_time = scene.cur_t
             # steps(5)
-            steps(33)
+            # steps(25)
+            steps(10)  # LF_DEBUG run at about 50 hz
+            act_end_time = scene.cur_t
+            act_diff_time = act_end_time - act_start_time
 
-        print(f"loop_step: {loop_step} | Done applying inference actions.")
+            print(f"loop_step: {loop_step} | Applying action {i+1}/{len(actions)}, took {act_diff_time:.3f} secs to run.")
+
+        chuck_end_wall_time = time.perf_counter()
+        chuck_diff_wall_time = chuck_end_wall_time - chuck_start_wall_time
+        chuck_act_end_time = scene.cur_t
+        chuck_act_diff_time = chuck_act_end_time - chuck_act_start_time
+        print(f"loop_step: {loop_step} | Done applying inference actions, took {chuck_act_diff_time:.3f} secs in sim time, {chuck_diff_wall_time:.3f} secs wall clock time")
 
 except KeyboardInterrupt:
     print("Simulation interrupted by user.")
 except Exception as e:
     print(f"An error occurred: {e}")
+    traceback.print_exc()
 finally:
     print("Exiting simulation.")

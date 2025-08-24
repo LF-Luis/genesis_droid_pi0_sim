@@ -62,7 +62,11 @@ def setup_scene():
         ),
         show_FPS = False,  # Don't print live FPS
         # sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
-        sim_options=gs.options.SimOptions(dt=0.002),  # 2ms step, mainly for the gripper stability
+        sim_options=gs.options.SimOptions(
+            dt=0.002,  # 2ms step, mainly for the gripper stability
+            # substeps=20,
+            requires_grad=False,
+        ),
         vis_options=gs.options.VisOptions(show_cameras=False),  # show where cameras are and where they're facing
         renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
     )
@@ -78,7 +82,7 @@ def setup_scene():
             file="urdf/3763/mobility_vhacd.urdf",
             scale=0.09,
             # pos=(0.5, 0.0, 0.1),
-            pos=(0.5, -0.25, 0.0343),
+            pos=(0.5, 0.25, 0.054),
             euler=(0, 90, 0),
         ),
     )
@@ -87,7 +91,7 @@ def setup_scene():
     fancy_wheel = scene.add_entity(
         morph=gs.morphs.URDF(
             file="urdf/wheel/fancy_wheel.urdf",
-            pos=(0.5, 0.25, 0.054),
+            pos=(0.5, -0.25, 0.0343),
             euler=(0, 0, 90),
             scale=0.04,
             convexify=False,

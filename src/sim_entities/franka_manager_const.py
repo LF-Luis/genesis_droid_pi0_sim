@@ -41,14 +41,15 @@ MUJOCO_FILE = "/workspace/dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"
 # BASE_POS = [0., -0.8, 0.]
 BASE_POS = [0., 0, 0.]
 # Robot joints: 7 arm joints + 1 gripper driver actuator-joint
-JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint"]
+# BUG: Should be able to actuate with just the "left_driver_joint" joint, but maybe the Mujoco file or Genesis parser is off -- need to use "right_driver_joint" as well.
+JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint", "right_driver_joint"]
 END_EFFECTOR_NAME = "base"
 # Links PD gains
-PROPORTIONAL_GAINS = np.array([400, 400, 400, 400, 400, 400, 400,   15])
-VELOCITY_GAINS     = np.array([ 80,  80,  80,  80,  80,  80,  80,    5])
+PROPORTIONAL_GAINS = np.array([400, 400, 400, 400, 400, 400, 400,   15,   15])
+VELOCITY_GAINS     = np.array([ 80,  80,  80,  80,  80,  80,  80,    5,    5])
 # Links force ranges
-FORCE_RANGES_LOWER = np.array([-87, -87, -87, -87, -12, -12, -12, -120])
-FORCE_RANGES_UPPER = np.array([ 87,  87,  87,  87,  12,  12,  12,  120])
+FORCE_RANGES_LOWER = np.array([-87, -87, -87, -87, -12, -12, -12, -120, -120])
+FORCE_RANGES_UPPER = np.array([ 87,  87,  87,  87,  12,  12,  12,  120,  120])
 
 HOME_POS = np.array([
     0.0,
@@ -57,6 +58,7 @@ HOME_POS = np.array([
     -4 / 5 * np.pi,
     0.0,
     3 / 5 * np.pi,
+    0.0,
     0.0,
     0.0,
 ])
