@@ -76,7 +76,7 @@ Current versions being used:
             --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
             -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
             "$PWD/" \
-            ubuntu@ec2-3-90-146-100.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/luis_dev/
+            ubuntu@ec2-3-81-125-250.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/luis_dev/
         ```
         ```bash
         # In Genesis-e064dbc dir:
@@ -98,28 +98,37 @@ uv run scripts/serve_policy.py policy:checkpoint \
     --policy.config=pi0_fast_droid \
     --policy.dir=gs://openpi-assets/checkpoints/pi0_fast_droid
 ```
+```bash
+# Now that there's a version of `pi0_fast_droid` trained with joint position actions, it's much
+# easier to simulate. Before with orig `pi0_fast_droid` we can get the gripper to for example
+# get near an object but it cannot pick it up.
+# https://github.com/Physical-Intelligence/openpi/blame/main/examples/droid/README_train.md#L43-L45
+# https://github.com/arhanjain/sim-evals/commit/171711551581955dcfa017ad0156e2497c659537
+
+
+```
 
 ## Systems
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-90-146-100.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-81-125-250.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-3-90-146-100.compute-1.amazonaws.com:8443#console
+ec2-3-81-125-250.compute-1.amazonaws.com:8443#console
 # Rsync code
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-3-90-146-100.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/dev/
+    ubuntu@ec2-3-81-125-250.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/dev/
 ```
 
 **More automated:**
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-90-146-100.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-81-125-250.compute-1.amazonaws.com
 sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
-# Enter desktop using DCV: ec2-3-90-146-100.compute-1.amazonaws.com:8443#console, then move on to next steps
+# Enter desktop using DCV: ec2-3-81-125-250.compute-1.amazonaws.com:8443#console, then move on to next steps
 # ./enter_genesis.sh
 ./Desktop/Genesis-main/openpi/enter_genesis.sh
 python openpi/pick_up_bottle.py
@@ -127,9 +136,9 @@ python openpi/pick_up_bottle.py
 
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-90-146-100.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-81-125-250.compute-1.amazonaws.com
 sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
-# Enter desktop using DCV: ec2-3-90-146-100.compute-1.amazonaws.com:8443#console, then move on to next steps
+# Enter desktop using DCV: ec2-3-81-125-250.compute-1.amazonaws.com:8443#console, then move on to next steps
 who  # get user DISPLAY, e.g. ":1"
 export DISPLAY=:1
 xhost +local:root
@@ -137,7 +146,7 @@ docker start genesis
 docker start openpi
 docker exec -it genesis /bin/bash
 
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-90-146-100.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-3-81-125-250.compute-1.amazonaws.com
 docker exec -it openpi /bin/bash
 
 python pick_up_bottle.py
@@ -149,7 +158,7 @@ uv run scripts/serve_policy.py policy:checkpoint \
 
 ```bash
 # Proxy through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-3-90-146-100.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-3-81-125-250.compute-1.amazonaws.com
 # Start DCV session on Macbook
 localhost:8443
 ```

@@ -158,8 +158,8 @@ try:
             "observation/wrist_image_left": wrist_cam_img,
             "observation/joint_position": joint_positions,
             # "observation/gripper_position": gripper_position,  # must be a single number since it applies to both gripper fingers
-            "observation/gripper_position": np.array([gripper_position[0]]),  # must be a single number since it applies to both gripper fingers
-            # "observation/gripper_position": gripper_norm,  # must be a single number since it applies to both gripper fingers
+            # "observation/gripper_position": np.array([gripper_position[0]]),  # must be a single number since it applies to both gripper fingers
+            "observation/gripper_position": gripper_norm,  # must be a single number since it applies to both gripper fingers
             "prompt": task_prompt,
         }
 
@@ -226,46 +226,47 @@ try:
 
             ############################################
             ######### Delta joint pos approach #########
-            # Extract arm joint actions (first 7 elements) and gripper action (8th element)
-            arm_action = action[:7]  # Shape: (7,)
-            gripper_action = action[7]  # Shape: (1,)
+            # # Extract arm joint actions (first 7 elements) and gripper action (8th element)
+            # arm_action = action[:7]  # Shape: (7,)
+            # gripper_action = action[7]  # Shape: (1,)
 
-            # Apply delta to arm joints
-            # franka_act = joint_positions + arm_action  # Shape: (7,)
-            franka_act = arm_action  # LF_DEBUG -- using velocity actions
+            # # Apply delta to arm joints
+            # # franka_act = joint_positions + arm_action  # Shape: (7,)
+            # franka_act = arm_action  # LF_DEBUG -- using velocity actions
 
-            # Handle gripper separately - convert to absolute position
-            if gripper_action > 0.5:
-                gripper_target = np.pi / 4  # ~45° in radians, closed
-            else:
-                gripper_target = 0.0  # open
+            # # Handle gripper separately - convert to absolute position
+            # if gripper_action > 0.5:
+            #     gripper_target = np.pi / 4  # ~45° in radians, closed
+            # else:
+            #     gripper_target = 0.0  # open
 
-            # Combine arm joints and gripper (duplicate gripper target for both fingers)
-            franka_act = np.hstack([franka_act, [gripper_target], [gripper_target]])  # Shape: (9,)
-            # print(f"final franka_act: {franka_act}")
-            franka_manager.set_joints_and_gripper_pos(franka_act)
+            # # Combine arm joints and gripper (duplicate gripper target for both fingers)
+            # franka_act = np.hstack([franka_act, [gripper_target], [gripper_target]])  # Shape: (9,)
+            # # print(f"final franka_act: {franka_act}")
+            # franka_manager.set_joints_and_gripper_pos(franka_act)
             ############################################
             ############################################
 
             ###############################################
             ######### Absolute joint pos approach #########
-            # arm_targets = action[:7]    # desired joint positions (radians)
-            # gripper_cmd = action[7]     # this will be 0.0 or 1.0 from model output
-            # print(f"LF_DEBUG: model out, gripper_cmd: {gripper_cmd}")
-            # # Map gripper command to actual joint value:
-            # if gripper_cmd > 0.5:
-            #     gripper_target = np.pi / 4  # ~45° in radians, closed
-            # else:
-            #     gripper_target = 0.0       # open
-            # franka_act = np.hstack([arm_targets, [gripper_target]])
-            # franka_manager.set_joints_and_gripper_pos(franka_act)
+            arm_targets = action[:7]    # desired joint positions (radians)
+            gripper_cmd = action[7]     # this will be 0.0 or 1.0 from model output
+            print(f"LF_DEBUG: model out, gripper_cmd: {gripper_cmd}")
+            # Map gripper command to actual joint value:
+            if gripper_cmd > 0.5:
+                gripper_target = np.pi / 4  # ~45° in radians, closed
+            else:
+                gripper_target = 0.0       # open
+            franka_act = np.hstack([arm_targets, [gripper_target], [gripper_target]])
+            franka_manager.set_joints_and_gripper_pos(franka_act)
             ###############################################
             ###############################################
 
             act_start_time = scene.cur_t
             # steps(5)
             # steps(25)
-            steps(10)  # LF_DEBUG run at about 50 hz
+            # steps(10)  # LF_DEBUG run at about 50 hz
+            steps(33)  # LF_DEBUG run at about 15 hz
             act_end_time = scene.cur_t
             act_diff_time = act_end_time - act_start_time
 

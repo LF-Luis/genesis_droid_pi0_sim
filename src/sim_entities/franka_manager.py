@@ -105,8 +105,7 @@ class FrankaManager:
 
     def set_joints_and_gripper_pos(self, action):
         # Set the current joint and gripper positions
-        # self._franka.control_dofs_position(action, self.dofs_idx)
-        self._franka.control_dofs_velocity(action, self.dofs_idx)
+        self._franka.control_dofs_position(action, self.dofs_idx)
 
     def cam_render(self):
         return self._wrist_camera.render()
