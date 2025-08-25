@@ -42,15 +42,42 @@ Current versions being used:
 - [Genesis-5cc3d5](https://github.com/Genesis-Embodied-AI/Genesis/commit/5cc3d5606c3c1e08eb3c628957e76e8e8512ae13)
 - [OpenPi-92b108](https://github.com/Physical-Intelligence/openpi/commit/92b10824421d6d810eb1e398330acd79dc7cd934)
     - Latest [OpenPi-df866f](https://github.com/Physical-Intelligence/openpi/tree/df866f61f95d801504adda66f412e1ef4bf7734c)
-        ```bash
-        # First Time
-        docker compose -f scripts/docker/compose.yml up --build
-        # Once server starts hit ctrl+c and run the following
-        # Subsequent runs
-        docker compose -f scripts/docker/compose.yml run -d --name openpi \
-            openpi_server bash -lc "tail -f /dev/null"
-        docker exec -it openpi /bin/bash
-        ```
+```bash
+# First Time
+docker compose -f scripts/docker/compose.yml up --build
+# Once server starts hit ctrl+c and run the following
+# Subsequent runs
+docker compose -f scripts/docker/compose.yml run -d --name openpi \
+    openpi_server bash -lc "tail -f /dev/null"
+docker exec -it openpi /bin/bash
+```
+```bash
+# openpi-karl-droid_policies: https://github.com/Physical-Intelligence/openpi/tree/karl/droid_policies (literal commit used: https://github.com/Physical-Intelligence/openpi/tree/b84cc75031eb3a9cbcfb1d55ee85fbd7db81e8bb)
+# Create compose.override.yml next to your compose file
+# so we can tag it (to keep the orig image)
+echo -e "services:\n  openpi_server:\n    image: openpi_server_new:karl" > scripts/docker/compose.override.yml
+# Build image
+docker compose -f scripts/docker/compose.yml -f scripts/docker/compose.override.yml up --build
+# Once server starts hit ctrl+c and run the following
+# Subsequent runs
+docker compose -f scripts/docker/compose.yml -f scripts/docker/compose.override.yml run -d --name openpi_karl \
+    openpi_server bash -lc "tail -f /dev/null"
+# Enter bash session
+docker exec -it openpi_karl /bin/bash
+# Running model
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.5 \
+    uv run scripts/serve_policy.py policy:checkpoint \
+    --policy.config=pi0_fast_droid_jointpos \
+    --policy.dir=s3://openpi-assets-simeval/pi0_fast_droid_jointpos
+
+
+
+uv run scripts/serve_policy.py policy:checkpoint \
+    --policy.config=pi0_fast_droid_jointpos \
+    --policy.dir=s3://openpi-assets-simeval/pi0_fast_droid_jointpos
+
+```
+
 - Latest [Genesis-e064dbc](https://github.com/Genesis-Embodied-AI/Genesis/tree/e064dbc8468d8fd47c0561218d8efd14565144c9)
     - `docker build -t genesis:e064dbc -f docker/Dockerfile docker`
         ```bash
@@ -82,10 +109,10 @@ Current versions being used:
         # In Genesis-e064dbc dir:
         mkdir ext
         cd ext
-        git clone git@github.com:Physical-Intelligence/openpi.git  # git-hash df866f
-        cd openpi
+        git clone git@github.com:Physical-Intelligence/openpi.git  # git-hash df866f or karl's version
+        cd openpi  # cd openpi-karl-droid_policies
         pip install -e . --no-deps
-        pip install -e packages/openpi-client
+        pip install -e packages/openpi-client  # If you get an issue about dependencies in this case those can be ignored
         ```
 
 ### Start OpenPi local server

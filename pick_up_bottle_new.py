@@ -231,8 +231,8 @@ try:
             # gripper_action = action[7]  # Shape: (1,)
 
             # # Apply delta to arm joints
-            # # franka_act = joint_positions + arm_action  # Shape: (7,)
-            # franka_act = arm_action  # LF_DEBUG -- using velocity actions
+            # franka_act = joint_positions + arm_action  # Shape: (7,)
+            # # franka_act = arm_action  # LF_DEBUG -- using velocity actions
 
             # # Handle gripper separately - convert to absolute position
             # if gripper_action > 0.5:
