@@ -51,9 +51,10 @@ class FrankaManager:
 
     def _set_control_params(self):
         # Setting control parameters
-        self._franka.set_dofs_kp(PROPORTIONAL_GAINS, self.dofs_idx)
-        self._franka.set_dofs_kv(VELOCITY_GAINS, self.dofs_idx)
-        self._franka.set_dofs_force_range(FORCE_RANGES_LOWER, FORCE_RANGES_UPPER, self.dofs_idx)
+        pass
+        # self._franka.set_dofs_kp(PROPORTIONAL_GAINS, self.dofs_idx)
+        # self._franka.set_dofs_kv(VELOCITY_GAINS, self.dofs_idx)
+        # self._franka.set_dofs_force_range(FORCE_RANGES_LOWER, FORCE_RANGES_UPPER, self.dofs_idx)
 
     def set_to_init_pos(self):
         """

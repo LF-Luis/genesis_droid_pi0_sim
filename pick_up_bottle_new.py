@@ -31,6 +31,8 @@ RUN_PI0 = True
 
 # Pi0 task prompt
 task_prompt = "pick up the yellow bottle"
+# task_prompt = "pick up the yellow bottle from white floor"
+# task_prompt = "put the bottle in the bowl"
 
 # Initialize link to OpenPi model, locally hosted
 if RUN_PI0:
@@ -69,11 +71,17 @@ if SHOW_SCENE_CAMS:
     # # Set camera poses using the converted transforms
     # ext_cam_1_left.set_pose(transform=EXT_CAM_1_T_robot_frame.cpu().numpy())
 
+    # Correct placement
     from genesis.utils import geom as gu
+    from src.sim_entities.franka_manager_const import BASE_POS
+
     cam_1_pos = np.array([0.05, 0.57, 0.66])
     cam_1_quat = np.array([-0.393, -0.195, 0.399, 0.805])  # (w,x,y,z)
     cam_1_T = gu.trans_quat_to_T(cam_1_pos, cam_1_quat)  # [qw, qx, qy, qz]
-    ext_cam_1_left.set_pose(transform=cam_1_T)
+    # ext_cam_1_left.set_pose(transform=cam_1_T)
+
+    # Attach left cam to base of robot
+    ext_cam_1_left.attach(rigid_link=franka_manager._franka.base_link, offset_T=cam_1_T)
 
 
 if SHOW_ROBOT:
@@ -218,6 +226,13 @@ try:
             (50 ms per action) / (2ms per step) = 25
             So 25 steps per action
             """
+            """
+            when running at dt=0.002
+            Running sim-evals-Pi0 at 15 Hz (per repo) = 1/15 secs = 0.0667 secs = 66 ms per action
+            Each step is 2ms
+            (66 ms per action) / (2ms per step) = 33.3
+            So 33.3 steps per action
+            """
 
             # print(f"loop_step: {loop_step} | Applying action {i+1}/{len(actions)}")
             # print(f"start joint_positions: {joint_positions}")
@@ -253,7 +268,8 @@ try:
             gripper_cmd = action[7]     # this will be 0.0 or 1.0 from model output
             print(f"LF_DEBUG: model out, gripper_cmd: {gripper_cmd}")
             # Map gripper command to actual joint value:
-            if gripper_cmd > 0.5:
+            # if gripper_cmd > 0.5:
+            if gripper_cmd > 0.2:
                 gripper_target = np.pi / 4  # ~45° in radians, closed
             else:
                 gripper_target = 0.0       # open
