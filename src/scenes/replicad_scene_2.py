@@ -32,19 +32,42 @@ def setup_cams(scene):
         fov=CAM_FOV,
         GUI=True
     )
-    ext_cam_2_left = scene.add_camera(
-        res=CAM_RES,
-        pos=[0, 0, 0],
-        lookat=[0, 0, 0],
-        fov=CAM_FOV,
-        GUI=True
-    )
+    # ext_cam_2_left = scene.add_camera(
+    #     res=CAM_RES,
+    #     pos=[0, 0, 0],
+    #     lookat=[0, 0, 0],
+    #     fov=CAM_FOV,
+    #     GUI=True
+    # )
 
-    return ext_cam_1_left, ext_cam_2_left
+    return ext_cam_1_left # , ext_cam_2_left
 
 
 def setup_scene():
     # Set up the simulation scene with a viewer
+    # scene = gs.Scene(
+    #     show_viewer=True,
+    #     viewer_options=gs.options.ViewerOptions(
+    #         res=(1280, 720),
+    #         camera_pos=(0.8, -1.0, 0.5),
+    #         camera_lookat=(0.5, 0.0, 0.2),
+    #         camera_fov=60,
+    #         max_FPS=60,
+    #     ),
+    #     show_FPS = False,  # Don't print live FPS
+    #     sim_options=gs.options.SimOptions(dt=0.01, substeps=2),  # simulation time-step 10ms, Defaults to 1e-2
+    #     rigid_options=gs.options.RigidOptions(
+    #         # Key: Increase contact solver stability
+    #         iterations=150,  # More iterations for better convergence
+    #         tolerance=1e-6,  # Tighter tolerance
+    #         contact_resolve_time=0.01,  # Faster contact resolution
+    #         # use_contact_island=True,  # use contact island to speed up contact resolving
+    #     ),
+    #     vis_options=gs.options.VisOptions(show_cameras=False),  # show where cameras are and where they're facing
+    #     renderer=gs.renderers.Rasterizer(),  # use rasterizer for rendering images
+    #     # renderer = gs.renderers.RayTracer())
+    # )
+        # Set up the simulation scene with a viewer
     scene = gs.Scene(
         show_viewer=True,
         viewer_options=gs.options.ViewerOptions(
@@ -54,18 +77,24 @@ def setup_scene():
             camera_fov=60,
             max_FPS=60,
         ),
-        show_FPS = False,  # Don't print live FPS
-        sim_options=gs.options.SimOptions(dt=0.01, substeps=2),  # simulation time-step 10ms, Defaults to 1e-2
         rigid_options=gs.options.RigidOptions(
-            # Key: Increase contact solver stability
-            iterations=150,  # More iterations for better convergence
-            tolerance=1e-6,  # Tighter tolerance
-            contact_resolve_time=0.01,  # Faster contact resolution
-            # use_contact_island=True,  # use contact island to speed up contact resolving
+            integrator=gs.integrator.implicitfast,
+            constraint_solver=gs.constraint_solver.Newton,
+            iterations=200,           # more constraint iterations
+            ls_iterations=50,
+            tolerance=1e-6,           # tighter convergence
+            contact_resolve_time=0.02 # MuJoCo time-constant; prevents spiky impulses
+            # enable_self_collision=False is already the default (good)
+        ),
+        show_FPS = False,  # Don't print live FPS
+        # sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
+        sim_options=gs.options.SimOptions(
+            dt=0.002,  # 2ms step, mainly for the gripper stability
+            # substeps=20,
+            requires_grad=False,
         ),
         vis_options=gs.options.VisOptions(show_cameras=False),  # show where cameras are and where they're facing
-        renderer=gs.renderers.Rasterizer(),  # use rasterizer for rendering images
-        # renderer = gs.renderers.RayTracer())
+        renderer=gs.renderers.Rasterizer()  # use rasterizer for rendering images
     )
 
 

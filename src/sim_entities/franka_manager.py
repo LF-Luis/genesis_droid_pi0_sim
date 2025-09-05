@@ -70,6 +70,7 @@ class FrankaManager:
         offset_T = gu.trans_quat_to_T(pos_offset, rot_offset)  # [qw, qx, qy, qz]
 
         self._wrist_camera.attach(rigid_link=self._end_effector, offset_T=offset_T)
+        # franka_manager._wrist_camera.attach(rigid_link=franka_manager._end_effector, offset_T=offset_T)
 
 
         self._set_control_params()

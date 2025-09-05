@@ -36,10 +36,11 @@ HOME_POS_STEPS = 50  # Steps to wait for stabilization
 """
 
 
+# MUJOCO_FILE = "/workspace/explorations/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"
 MUJOCO_FILE = "/workspace/dev/assets/panda_wt_robotiq_2f85/panda_wt_2f85.xml"
 
-# BASE_POS = [0., -0.8, 0.]
-BASE_POS = [0., 0, 0.]
+BASE_POS = [0., -0.8, 0.]
+# BASE_POS = [0., 0, 0.]
 # Robot joints: 7 arm joints + 1 gripper driver actuator-joint
 # BUG: Should be able to actuate with just the "left_driver_joint" joint, but maybe the Mujoco file or Genesis parser is off -- need to use "right_driver_joint" as well.
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint", "right_driver_joint"]

@@ -9,8 +9,8 @@ from src.utils.perf_timer import perf_timer
 from src.utils.debug import enter_interactive #, inspect_structure
 from src.sim_utils.cam_pose_debug import CamPoseDebug
 from src.sim_entities.franka_manager import FrankaManager
-from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T
-
+# from src.scenes.simple_scene import setup_scene, setup_cams, EXT_CAM_1_T
+from src.scenes.replicad_scene_2 import setup_scene, setup_cams, EXT_CAM_1_T, EXT_CAM_2_T
 
 from src.sim_utils.transformations import move_relative_to_frame
 import torch
@@ -32,7 +32,6 @@ RUN_PI0 = True
 # Pi0 task prompt
 task_prompt = "pick up the yellow bottle"
 # task_prompt = "pick up the yellow bottle from white floor"
-# task_prompt = "put the bottle in the bowl"
 
 # Initialize link to OpenPi model, locally hosted
 if RUN_PI0:
@@ -46,8 +45,8 @@ gs.init(
 )
 
 with perf_timer("Setup scene"):  # 1.24 seconds
-    # scene, debug_bottle, debug_entity, basket_vis, basket_col = setup_scene()
-    scene = setup_scene()
+    scene, debug_bottle, debug_entity, basket_vis, basket_col = setup_scene()
+    # scene = setup_scene()
 
 if SHOW_SCENE_CAMS:
     with perf_timer("Setup ext cams"):  # 0.000126 seconds
@@ -83,7 +82,6 @@ if SHOW_SCENE_CAMS:
     # Attach left cam to base of robot
     ext_cam_1_left.attach(rigid_link=franka_manager._franka.base_link, offset_T=cam_1_T)
 
-
 if SHOW_ROBOT:
     franka_manager.set_to_init_pos()
 
@@ -114,7 +112,8 @@ try:
     while not done:
         loop_step += 1  # Increase logical loop-step (not tied to actual sim step)
 
-        if loop_step % 10 == 0 and loop_step > 0:
+        # if loop_step % 10 == 0 and loop_step > 0:
+        if loop_step % 10 == 0:
             enter_interactive()
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
@@ -179,6 +178,7 @@ try:
                 model_response = pi0_model_client.infer(observation)
             # actions = model_response["actions"]  # Shape: (10, 8), numpy.float64
             actions = model_response["actions"][:8]  # LF_DEBUG only using the first 8 actions
+            # actions = model_response["actions"]
         except Exception as e:
             # Pi0 server can fail when it's first started up, so try again by continuing to the next step
             print(f"⚠️ loop_step: {loop_step} | Error running inference. Will try again. Error: {e}")
