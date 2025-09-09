@@ -90,6 +90,7 @@ def setup_scene():
         # sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
         sim_options=gs.options.SimOptions(
             dt=0.002,  # 2ms step, mainly for the gripper stability
+            # dt=0.01,
             # substeps=20,
             requires_grad=False,
         ),

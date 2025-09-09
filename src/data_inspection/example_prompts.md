@@ -1,5 +1,117 @@
 see https://robo-arena.github.io/leaderboard under "pi0_fast_droid"
 
+### Examples from DROID dataset
+- Put the marker in the pot
+- Get the marker from the table and put it inside the silver pot
+- Put the marker inside the silver pot
+- Put the candy bar on the left side of the first shelf
+- Put one green sachet in the grey bowl.
+- Place the pack of doritos inside the sink
+- Move the sharpie to the table
+- Take the pen out of the bowl and place it on the table
+- Remove the pen from the bowl and place it on the table
+- Take the marker from the bowl and put it on the table
+- Move the pan to the right.
+- Move the glass to the second row in the dishwasher
+- Move the glass in the dish washer to the middle row
+- Move the glass jar in the dishwasher to the right
+- Pick up the lid from the table and put it on the pot
+- Pick up the black object from the striped towel and place it on the white sheet of paper on the right
+- Slide the black lid off
+- Open the phone
+- Slide the cover off the calculator.
+- Put the orange rubber duck into the pot
+- Put the orange rubber duck in the pot
+- Put the orange object in the pot
+- Use the duster to wipe the whiteboard
+- Move the black object on the table
+- Use the black eraser to wipe the whiteboard.
+- Turn off the left light switch
+- Turn the light off.
+- Flip off the light switch to the left
+- Put the tissues in the rubbish bin.
+- Place the crumpled up paper inside the mixed paper bin on the right
+- Put the pieces of paper in the right bin
+- Put the middle fork in the middle section of the white object
+- Put the  cable in the storage box
+- Put the black cable in the grey box
+- Pick up the black cable and put it in the gray storage box
+- Put the bread in the toaster
+- Put a slice of bread in the toaster
+- Put a slice of bread in the toaster
+- Put the white book on top of the tissue box.
+- Move the vaseline closer to the mirror
+- Move the white bottle away from you
+- Pick up the Vaseline container and move it to the back of the counter
+- Put the towel on the bottle to the right
+- Take two folded white cloths out of the white box on the left
+- Put the clothes in the box on the table
+- Remove a cloth from the box
+- Put the objects on the table into the cardboard box
+- Put the items on the table in the box
+- Pick up the bottle and two plastic bags, put them in the box and move the box to the left
+- Put the towel on the table into the box
+- Turn the tap on and off and put the spoon in the dishes tray
+- Pick up the computer mouse and put it in the microwave
+- Put the marker inside the cup
+- Put the marker inside the blue cup
+- Put the marker in the cup
+Pick up the white towel and put it in the basket , pick up the marker and put it in the cup, then, pick up the yellow towel and put it in the basket, and finally - pick up the masking tape and put it in the cup
+- Pick up the two towels and put them in the box, then pick up the marker and seal tape and put them in the cup
+- Pick up the towels and put them in the basket and then pick up the marker and the masking table and put them in the cup
+- Press a button on the keyboard
+- Pick up the mouse
+- Press a button on the keyboard
+- Put the green block in the bowl
+- Put the green object in the bowl
+- Put the green block inside the black bowl
+- Put the orange toy into the wooden box
+- Take the lid off the smaller pot
+- Take the lid off the silver pot and put it on the table
+- Take the silver lid from the silver pot and put it on the table
+- Move the orange objects from the pullout table to the desk
+- Remove the orange objects from the drawer and put them on the table
+- Put the things on the sliding tray on the table
+- Move the green plush to the left
+- Move the pee plush toy
+- Move the plush toy on the stove plate to the counter
+- move one white object from the right heap to the left, then get the blue-white object and fold it on top of the left heap
+- Move the white clothing on the right to the pile of clothes on the left, place the checkered shirt on top of the pile on the left
+- Arrange the clothes on the bed
+- Move the yellow mug forward
+- Move the yellow mug to the center of the table
+- Move the yellow cup backwards
+- Move the cup to the right
+- Move the glass to the right
+- Move the glass cup to the right.
+- Close the drawer
+- Close the drawer
+- Close the drawer
+- Turn the tap nozzle from the right to the middle then open the tap
+- Move the tap nozzle from the right to the middle then open the tap
+- Center the faucet and then lift the handle
+- Pick up one small bottle from the container and put it on the table.
+- Remove the white object from the plastic container
+- Put a small bottle on the table
+- Put the yellow cube inside the blue cup
+- Pick up the yellow tube and put it in the cup
+- Pick up the yellow object on the table and put it in the cup
+- Move the pot to the top left corner of the table
+- Move the pot to the top-left part of the table
+- Move the silver pot to the left
+- Move the faucet to the center of the sink
+- Make the tap face forward
+- Turn the tap nozzle to the left
+- Get the marker from the table and place it in the colorless cup
+- Put the red marker in the cup
+- Take the marker from the table and put it in the jug
+- Pick the two bottles on the stove and place them on the counter, then pick the cooking stick from the pot and place it on the stove
+- Pick the bottles on the stove one by one, put them on the counter then take the wooden spatula out of the pot and put it on the stove
+- Move the spice bottles on the stove to the counter on the right of the stove and then put the wooden spoon on the pot directly on the stove top
+- Take the blocks out of the gift disappointed
+- Remove the blocks from the bowl one by one and place them on the table
+- Remove the colorful blocks from the black bowl and put them on the table
+
 ### https://autolab.berkeley.edu/assets/publications/media/2024-RSS-DROID.pdf
 - "Close Waffle Maker"
 - "Place Chips on Plate"

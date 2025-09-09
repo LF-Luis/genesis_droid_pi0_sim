@@ -32,8 +32,9 @@ RUN_PI0 = True
 # Pi0 task prompt
 # task_prompt = "pick up the yellow bottle"
 # task_prompt = "move the yellow bottle to the corner of the table"
-task_prompt = "grab the yellow bottle from its center and move it to the corner of the table"
 # task_prompt = "pick up the yellow bottle from white floor"
+# task_prompt = "grab the yellow bottle from its center and move it to the corner of the table"
+task_prompt = "Grab the yellow bottle from its center and place it into the bowl"
 
 # Initialize link to OpenPi model, locally hosted
 if RUN_PI0:
@@ -48,6 +49,39 @@ gs.init(
 
 with perf_timer("Setup scene"):  # 1.24 seconds
     scene, debug_bottle, debug_entity, basket_vis, basket_col = setup_scene()
+
+    def add_replicaCAD_obj(asset_path, pos, quat):
+        return scene.add_entity(
+            gs.morphs.Mesh(
+                file=asset_path,
+                pos=pos,
+                quat=quat,
+                # scale=scale,
+                visualization=True,
+                collision=True,
+                fixed=False,
+                convexify=False,
+                decimate=True,
+                decompose_nonconvex=False,
+            ),
+            surface=gs.surfaces.Default(vis_mode="visual"),
+        )
+
+    # debug_bottle.set_pos([0.95, -2.55, 0.95])
+
+    DATASET_PATH = "/workspace/assets/haosulab-ReplicaCAD"
+    replica_cad_bowl_07 = f"{DATASET_PATH}/objects/frl_apartment_bowl_07.glb"
+    replica_cad_clock = f"{DATASET_PATH}/objects/frl_apartment_clock.glb"
+    replica_cad_cup_01 = f"{DATASET_PATH}/objects/frl_apartment_cup_01.glb"
+    replica_cad_pan_01 = f"{DATASET_PATH}/objects/frl_apartment_pan_01.glb"
+    replica_cad_remote_control_01 = f"{DATASET_PATH}/objects/frl_apartment_remote-control_01.glb"
+
+    bowl_07 = add_replicaCAD_obj(replica_cad_bowl_07, [0.6, -2.3,  0.97], [0.7071, 0.7071, 0, 0])
+    # clock = add_replicaCAD_obj(replica_cad_clock, [0.95, -2.55, 2.95])
+    # cup_01 = add_replicaCAD_obj(replica_cad_cup_01, [0.95, -2.55, 3.95])
+    # pan_01 = add_replicaCAD_obj(replica_cad_pan_01, [0.95, -2.55, 4.95])
+    # remote_control_01 = add_replicaCAD_obj(replica_cad_remote_control_01, [0.95, -2.55, 5.95])
+
     # scene = setup_scene()
 
 if SHOW_SCENE_CAMS:
