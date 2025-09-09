@@ -30,7 +30,9 @@ SHOW_SCENE_CAMS = True
 RUN_PI0 = True
 
 # Pi0 task prompt
-task_prompt = "pick up the yellow bottle"
+# task_prompt = "pick up the yellow bottle"
+# task_prompt = "move the yellow bottle to the corner of the table"
+task_prompt = "grab the yellow bottle from its center and move it to the corner of the table"
 # task_prompt = "pick up the yellow bottle from white floor"
 
 # Initialize link to OpenPi model, locally hosted
@@ -97,6 +99,12 @@ def steps(n=1):
 
 print("Starting simulation.")
 
+franka_manager._franka.set_pos([0.7, -2.9, 0.9])
+import numpy as np
+q = [np.cos(np.pi/8), 0., 0., np.sin(np.pi/8)]
+franka_manager._franka.set_quat(q)
+debug_bottle.set_pos([0.95, -2.55, 0.95])
+
 steps(5)
 
 if SHOW_ROBOT:
@@ -113,8 +121,8 @@ try:
         loop_step += 1  # Increase logical loop-step (not tied to actual sim step)
 
         # if loop_step % 10 == 0 and loop_step > 0:
-        if loop_step % 10 == 0:
-            enter_interactive()
+        # if loop_step % 10 == 0:
+        #     enter_interactive()
 
         # Get scene "observation" data for Pi0 model (joint angles and cam images)
         ext_camera_img = ext_cam_1_left.render()[0]  # 0th is the rgb_arr

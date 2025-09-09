@@ -26,6 +26,7 @@ pip install --upgrade pip && pip install tensorflow tensorflow-datasets numpy pi
 
 
 from pathlib import Path
+import argparse
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -44,13 +45,14 @@ def get_data_schema():
     print(builder.info)
 
 
-def load_dataset(split="train", shuffle_buffer=1000, seed=0):
+def _load_dataset(split="train", shuffle_buffer=1000, seed=0):
+    # 1000 from using entire dataset, harmless for 100
     # Load and shuffle dataset
     ds = tfds.load("droid_100", data_dir=str(DATA_DIR), split=split, shuffle_files=False)
     return ds.shuffle(buffer_size=shuffle_buffer, seed=seed)
 
 
-def save_fields(data: dict, base_dir: Path, prefix: str = "", step: int = None):
+def _save_fields(data: dict, base_dir: Path, prefix: str = "", step: int = None):
     """
     Recursively save each field in data to its own file under base_dir.
     Each file accumulates one line per step with: "step: value"
@@ -60,7 +62,7 @@ def save_fields(data: dict, base_dir: Path, prefix: str = "", step: int = None):
         if "image" in key.lower():
             continue  # skip image data
         if isinstance(value, dict):
-            save_fields(value, base_dir, prefix=key_path, step=step)
+            _save_fields(value, base_dir, prefix=key_path, step=step)
         else:
             file_path = base_dir / f"{key_path.replace('.', '_')}.txt"
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,7 +75,7 @@ def save_fields(data: dict, base_dir: Path, prefix: str = "", step: int = None):
                 f.write(f"{step}: {val}\n")
 
 
-def create_gif(frames, path: Path, fps: int = DEFAULT_FPS):
+def _create_gif(frames, path: Path, fps: int = DEFAULT_FPS):
     frames[0].save(
         str(path), save_all=True, append_images=frames[1:],
         duration=int(1000 / fps), loop=0
@@ -81,7 +83,7 @@ def create_gif(frames, path: Path, fps: int = DEFAULT_FPS):
     return path.read_bytes()
 
 
-def annotate_frames(steps, episode_idx: int):
+def _annotate_frames(steps, episode_idx: int):
     # Combine and annotate image tensors for each step
     frames = []
     for idx, step in enumerate(steps):
@@ -106,30 +108,69 @@ def explore(num_episodes=1, shuffle_buffer=1000, seed=0):
     Sample episodes, save each field across steps into dedicated files,
     and display a GIF of combined observations
     """
-    dataset = load_dataset(shuffle_buffer=shuffle_buffer, seed=seed)
+    dataset = _load_dataset(shuffle_buffer=shuffle_buffer, seed=seed)
 
     for ep_idx, episode in enumerate(dataset.take(num_episodes)):
         ep_dir = OUTPUT_DIR / f"rand_ep_{ep_idx}_data"
         ep_dir.mkdir(parents=True, exist_ok=True)
 
         # Save episode metadata fields
-        save_fields(episode.get("episode_metadata", {}), ep_dir, prefix="metadata", step=None)
+        _save_fields(episode.get("episode_metadata", {}), ep_dir, prefix="metadata", step=None)
 
         # Save each step's fields into per-field files
         steps = list(episode["steps"])
         for step_idx, step in enumerate(steps):
-            save_fields(step, ep_dir, prefix="", step=step_idx)
+            _save_fields(step, ep_dir, prefix="", step=step_idx)
 
         # Create and save GIF
-        frames = annotate_frames(steps, ep_idx)
+        frames = _annotate_frames(steps, ep_idx)
         gif_path = ep_dir / "episode.gif"
-        gif_bytes = create_gif(frames, gif_path)
+        gif_bytes = _create_gif(frames, gif_path)
         display(DisplayImage(gif_bytes))
 
 
+def cat_language_instructions():
+    """List all language instructions from all episodes in the dataset."""
+    dataset = tfds.load("droid_100", data_dir=str(DATA_DIR), split="train", shuffle_files=False)
+
+    print("Language Instructions from DROID Dataset:")
+    print("=" * 50)
+
+    for ep_idx, episode in enumerate(dataset):
+        print(f"\nEpisode {ep_idx}:")
+        print("-" * 20)
+
+        first_step = next(iter(episode["steps"]))
+        # Access language instructions directly from the step
+        print(f"language_instruction: {first_step['language_instruction'].numpy().decode('utf-8')}")
+        print(f"language_instruction_2: {first_step['language_instruction_2'].numpy().decode('utf-8')}")
+        print(f"language_instruction_3: {first_step['language_instruction_3'].numpy().decode('utf-8')}")
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Explore DROID dataset episodes")
+    parser.add_argument("--num_episodes", type=int, default=1,
+                       help="Number of episodes to explore (default: 1)")
+    parser.add_argument("--shuffle_buffer", type=int, default=1000,
+                       help="Shuffle buffer size (default: 1000)")
+    parser.add_argument("--seed", type=int, default=0,
+                       help="Random seed for shuffling (default: 0)")
+    parser.add_argument("--cat_language_instructions", action="store_true",
+                       help="List all language instructions from all episodes in the dataset")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_args()
     # get_data_schema()
-    explore(num_episodes=5, shuffle_buffer=1000, seed=24)
+
+    if args.cat_language_instructions:
+        cat_language_instructions()
+    else:
+        explore(num_episodes=args.num_episodes,
+                shuffle_buffer=args.shuffle_buffer,
+                seed=args.seed)
 
 
 '''
