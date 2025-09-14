@@ -115,7 +115,9 @@ def setup_scene():
     bottle = scene.add_entity(
         material=gs.materials.Rigid(rho=300),
         morph=gs.morphs.URDF(
-            file="urdf/3763/mobility_vhacd.urdf",
+            # file="urdf/3763/mobility_vhacd.urdf",
+            # file="/workspace/explorations/assets/3763/mobility_vhacd.urdf",
+            file="/workspace/explorations/assets/3763/mobility_vhacd_fixed.urdf",
             scale=0.09,
             # pos=(0.5, 0.0, 0.1),
             # pos=(0.4, -0.9, 0.035),

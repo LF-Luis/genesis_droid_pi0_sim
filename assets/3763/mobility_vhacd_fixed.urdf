@@ -1,0 +1,59 @@
+<?xml version="1.0" ?>
+<robot name="partnet_6b8b2cb01c376064c8724d5673a063a6">
+  <link name="base"/>
+
+  <link name="link_0">
+    <visual name="lid-7">
+      <origin xyz="0.005474442099535147 0 0.001057485751011103"/>
+      <geometry>
+        <mesh filename="textured_objs/original-2.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.005474442099535147 0 0.001057485751011103"/>
+      <geometry>
+        <mesh filename="textured_objs/original-2_vhacd.obj"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="link_1">
+    <visual name="body-5">
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/original-3.obj"/>
+      </geometry>
+    </visual>
+    <visual name="neck-6">
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/original-1.obj"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/original-3_vhacd.obj"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="textured_objs/original-1_vhacd.obj"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="joint_1" type="fixed">
+    <origin rpy="1.570796326794897 0 -1.570796326794897" xyz="0 0 0"/>
+    <child link="link_1"/>
+    <parent link="base"/>
+  </joint>
+
+  <!-- Fixed joint gluing the cap to the bottle -->
+  <joint name="cap_to_bottle" type="fixed">
+    <origin xyz="-0.005474442099535147 0 -0.001057485751011103" rpy="0 0 0"/>
+    <parent link="link_1"/>
+    <child link="link_0"/>
+  </joint>
+</robot>

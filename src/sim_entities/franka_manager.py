@@ -110,6 +110,7 @@ class FrankaManager:
         self._franka.control_dofs_position(action, self.dofs_idx)
 
     def cam_render(self):
+        self._wrist_camera.move_to_attach()
         return self._wrist_camera.render()
 
     def step(self, vis = True):

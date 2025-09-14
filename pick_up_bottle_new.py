@@ -34,7 +34,8 @@ RUN_PI0 = True
 # task_prompt = "move the yellow bottle to the corner of the table"
 # task_prompt = "pick up the yellow bottle from white floor"
 # task_prompt = "grab the yellow bottle from its center and move it to the corner of the table"
-task_prompt = "Grab the yellow bottle from its center and place it into the bowl"
+# task_prompt = "Grab the yellow bottle from its center and place it into the bowl"
+task_prompt = "Place the plastic bottle into the bowl."
 
 # Initialize link to OpenPi model, locally hosted
 if RUN_PI0:
@@ -142,8 +143,11 @@ def steps(n: int = 1, renderOption: StepRenderOpt = StepRenderOpt.ALL):
 
         scene.step()
         if USE_ROBOT:
+            # if should_render:
+            #     print(f"Render wrist cam: {should_render}")
             franka_manager.step(vis=should_render)
         if SHOW_SCENE_CAMS and should_render:
+            # print(f"Render scene cam: {should_render}")
             _ = ext_cam_1_left.render()
 
 print("Starting simulation.")
@@ -340,10 +344,11 @@ try:
             # steps(25)
             # steps(10)  # LF_DEBUG run at about 50 hz
             # steps(33)  # LF_DEBUG run at about 15 hz
-            if i == len(actions) - 1:
-                steps(n=33, renderOption=StepRenderOpt.LAST_FRAME)
-            else:
-                steps(n=33, renderOption=StepRenderOpt.NONE)
+            # if i == len(actions) - 1:
+            #     steps(n=33, renderOption=StepRenderOpt.LAST_FRAME)
+            # else:
+            steps(n=33, renderOption=StepRenderOpt.NONE)
+            # steps(n=10, renderOption=StepRenderOpt.NONE)
 
             act_end_time = scene.cur_t
             act_diff_time = act_end_time - act_start_time
