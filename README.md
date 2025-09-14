@@ -29,8 +29,6 @@ Genesis doesn’t automatically use each sub-mesh as its own collider. Instead, 
 	1.	merges them,
 	2.	simplifies geometry,
 	3.	and creates convex collision shapes.
-
-[ ] load non-decomp GLB and let Genesis perform decomposition?
 ```
 
 ## TODO
@@ -40,16 +38,18 @@ Genesis doesn’t automatically use each sub-mesh as its own collider. Instead, 
 ## Reproducibility
 Current versions being used:
 - [Genesis-5cc3d5](https://github.com/Genesis-Embodied-AI/Genesis/commit/5cc3d5606c3c1e08eb3c628957e76e8e8512ae13)
+    - `docker build -t genesis:5cc3d5 -f docker/Dockerfile docker`
 - [OpenPi-92b108](https://github.com/Physical-Intelligence/openpi/commit/92b10824421d6d810eb1e398330acd79dc7cd934)
     - Latest [OpenPi-df866f](https://github.com/Physical-Intelligence/openpi/tree/df866f61f95d801504adda66f412e1ef4bf7734c)
 ```bash
 # First Time
 docker compose -f scripts/docker/compose.yml up --build
+    # Edit scripts/docker/compose.yml image name to openpi:b84cc7 to create the openpi_jointpos_b84cc7 container
 # Once server starts hit ctrl+c and run the following
 # Subsequent runs
-docker compose -f scripts/docker/compose.yml run -d --name openpi \
+docker compose -f scripts/docker/compose.yml run -d --name openpi_jointpos_b84cc7 \
     openpi_server bash -lc "tail -f /dev/null"
-docker exec -it openpi /bin/bash
+docker exec -it openpi_jointpos_b84cc7 /bin/bash
 ```
 ```bash
 # openpi-karl-droid_policies: https://github.com/Physical-Intelligence/openpi/tree/karl/droid_policies (literal commit used: https://github.com/Physical-Intelligence/openpi/tree/b84cc75031eb3a9cbcfb1d55ee85fbd7db81e8bb)
@@ -65,8 +65,8 @@ uv run scripts/serve_policy.py policy:checkpoint \
     --policy.dir=s3://openpi-assets-simeval/pi0_fast_droid_jointpos
 ```
 
-- Latest [Genesis-e064db](https://github.com/Genesis-Embodied-AI/Genesis/tree/e064dbc8468d8fd47c0561218d8efd14565144c9)
-    - `docker build -t genesis:e064db -f docker/Dockerfile docker`
+- Latest [Genesis-66708b](https://github.com/Genesis-Embodied-AI/Genesis/tree/66708b2df7b2909b59915852e015ea1bb91bb948)
+    - `docker build -t genesis:66708b -f docker/Dockerfile docker`
         ```bash
         who
         export DISPLAY=:1
@@ -77,9 +77,9 @@ uv run scripts/serve_policy.py policy:checkpoint \
             -v /dev/dri:/dev/dri \
             -v /tmp/.X11-unix/:/tmp/.X11-unix \
             -v $PWD:/workspace \
-            --name genesis \
+            --name genesis-66708b \
             --network host \
-            genesis:e064db
+            genesis:66708b
 
         # Restart
         docker start genesis-e064db
@@ -90,7 +90,7 @@ uv run scripts/serve_policy.py policy:checkpoint \
             --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
             -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
             "$PWD" \
-            ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com:/home/ubuntu/dev/
+            ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com:/home/ubuntu/dev/
         ```
         ```bash
         # In Genesis-e064db dir:
@@ -125,36 +125,30 @@ uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-18-234-38-153.compute-1.amazonaws.com:8443#console
-# Rsync code
-rsync -avz --progress \
-    --exclude '.git*' --exclude 'venv' --exclude '__pycache__' --delete \
-    -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
-    "$PWD" \
-    ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com:/home/ubuntu/dev/
+ec2-44-200-228-145.compute-1.amazonaws.com:8443#console
 
-# Move ReplicCAD assets
+# Rsync code # Move ReplicCAD assets
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' --delete \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD" \
-    ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/assets/
+    ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com:/home/ubuntu/dev/
 
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' --delete \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/dev/
+    ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/dev/
 ```
 
 **More automated:**
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
 sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
-# Enter desktop using DCV: ec2-18-234-38-153.compute-1.amazonaws.com:8443#console, then move on to next steps
+# Enter desktop using DCV: ec2-44-200-228-145.compute-1.amazonaws.com:8443#console, then move on to next steps
 # ./enter_genesis.sh
 ./Desktop/Genesis-main/openpi/enter_genesis.sh
 python openpi/pick_up_bottle.py
@@ -162,19 +156,19 @@ python openpi/pick_up_bottle.py
 
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com
-sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
-# Not needed anymore: Enter desktop using DCV: ec2-18-234-38-153.compute-1.amazonaws.com:8443#console, then move on to next steps
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
+# Not needed anymore: sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
+# Enter desktop using DCV: ec2-44-200-228-145.compute-1.amazonaws.com:8443#console, then move on to next steps
 who  # get user DISPLAY, e.g. ":1"
 export DISPLAY=:1
 xhost +local:root
-./Desktop/Genesis-e064dbc/dev/sys_scripts/gnome_view_hw_metrics.sh
-docker start genesis
-docker start openpi_karl
-docker exec -it genesis /bin/bash
+. /home/ubuntu/dev/explorations/sys_scripts/gnome_view_hw_metrics.sh
+docker start genesis-66708b
+docker start openpi_jointpos_b84cc7
+docker exec -it genesis-66708b /bin/bash
 
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com
-docker exec -it openpi_karl /bin/bash
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
+docker exec -it openpi_jointpos_b84cc7 /bin/bash
 uv run scripts/serve_policy.py policy:checkpoint \
     --policy.config=pi0_fast_droid_jointpos \
     --policy.dir=s3://openpi-assets-simeval/pi0_fast_droid_jointpos
@@ -185,7 +179,7 @@ python pick_up_bottle.py
 
 ```bash
 # Proxy through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-18-234-38-153.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
 # Start DCV session on Macbook
 localhost:8443
 ```

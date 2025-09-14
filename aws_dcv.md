@@ -19,6 +19,23 @@ AWS US-EAST-1 (Aug. 30th, 2025)
 g6.4xlarge
 | g6.4xlarge   | $1.3232   | 16   | 64 GiB  | L4 (24GB)  |
 
+
+| g6e.2xlarge  | $2.24208  | 8    | 64 GiB  | L40S (48GB)|
+
+- NVIDIA Omniverse Development Workstation (Linux)
+    - Ubuntu 24.04.3 LTS
+
+
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-84-105-148.compute-1.amazonaws.com
+- Start X server: `sudo systemctl isolate graphical.target`
+
+
+Cheaper options:
+- AWS/NVIDIA used to have the NVIDIA Omniverse GPU-Optimized AMI, which worked great even on a g4dn.xlarge, but they removed it in order to start pushing more expensive GPU
+- NVIDIA RTX Virtual Workstation - Ubuntu with g4dn.xlarge ($0.526/hour)
+- Things will just run a little slower
+
+
 AWS AMI: NVIDIA RTX Virtual Workstation - Ubuntu 24.04
 250 GB in root, for this dev env root is fine
 
@@ -40,6 +57,7 @@ Your IP (Recommended for security) → Select My IP
 
 
 # Amazon DCV in Ubuntu
+Follow this to install DCV and be able to see the Ubuntu desktop from your mac:
 https://docs.aws.amazon.com/dcv/latest/adminguide/what-is-dcv.html
 
 ## Install a desktop environment and desktop manager
@@ -74,7 +92,7 @@ sudo ufw allow from <your Macbook's IP> to any port 8443 proto tcp
 # set ubuntu password
 sudo passwd ubuntu
 
-# Edit dcv.conf
+# Edit dcv.conf -- NOT NEEDED?
 sudo vim /etc/dcv/dcv.conf
     [session-management]
     create-session=true
@@ -85,14 +103,14 @@ sudo vim /etc/dcv/dcv.conf
 
 # Starting the Amazon DCV Server
 sudo systemctl start dcvserver && sudo systemctl enable dcvserver
-sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
+sudo systemctl restart gdm3 && sudo systemctl restart dcvserver -- NOT NEEDED?
 
 # List DCV sessions -- verify your session is active
 dcv list-sessions
 
 # In the DCV mac app:
 <Public-IPv4-DNS>:8443#console
-    # e.g. ec2-52-205-13-246.compute-1.amazonaws.com:8443#console
+    # e.g. ec2-98-84-105-148.compute-1.amazonaws.com:8443#console
 
 sudo apt install -y xserver-xorg-video-dummy
 ```

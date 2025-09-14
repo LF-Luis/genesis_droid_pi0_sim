@@ -25,7 +25,7 @@ Cameras info: https://www.stereolabs.com/store/products/zed-mini
 # Setup Params
 COMPILE_KERNELS = True  # Set False only for debugging scene layout
 
-SHOW_ROBOT = True
+USE_ROBOT = True
 SHOW_SCENE_CAMS = True
 RUN_PI0 = True
 
@@ -69,14 +69,15 @@ with perf_timer("Setup scene"):  # 1.24 seconds
 
     # debug_bottle.set_pos([0.95, -2.55, 0.95])
 
-    DATASET_PATH = "/workspace/assets/haosulab-ReplicaCAD"
+    DATASET_PATH = "/workspace/haosulab-ReplicaCAD"
     replica_cad_bowl_07 = f"{DATASET_PATH}/objects/frl_apartment_bowl_07.glb"
     replica_cad_clock = f"{DATASET_PATH}/objects/frl_apartment_clock.glb"
     replica_cad_cup_01 = f"{DATASET_PATH}/objects/frl_apartment_cup_01.glb"
     replica_cad_pan_01 = f"{DATASET_PATH}/objects/frl_apartment_pan_01.glb"
     replica_cad_remote_control_01 = f"{DATASET_PATH}/objects/frl_apartment_remote-control_01.glb"
 
-    bowl_07 = add_replicaCAD_obj(replica_cad_bowl_07, [0.6, -2.3,  0.97], [0.7071, 0.7071, 0, 0])
+
+    bowl_07 = add_replicaCAD_obj(replica_cad_bowl_07, [0.6, -2.3,  1], [0.7071, 0.7071, 0, 0])
     # clock = add_replicaCAD_obj(replica_cad_clock, [0.95, -2.55, 2.95])
     # cup_01 = add_replicaCAD_obj(replica_cad_cup_01, [0.95, -2.55, 3.95])
     # pan_01 = add_replicaCAD_obj(replica_cad_pan_01, [0.95, -2.55, 4.95])
@@ -88,7 +89,7 @@ if SHOW_SCENE_CAMS:
     with perf_timer("Setup ext cams"):  # 0.000126 seconds
         ext_cam_1_left = setup_cams(scene)
 
-if SHOW_ROBOT:
+if USE_ROBOT:
     with perf_timer("Setup Franka"):  # 1.08 secs
         franka_manager = FrankaManager(scene)
 
@@ -118,17 +119,31 @@ if SHOW_SCENE_CAMS:
     # Attach left cam to base of robot
     ext_cam_1_left.attach(rigid_link=franka_manager._franka.base_link, offset_T=cam_1_T)
 
-if SHOW_ROBOT:
+if USE_ROBOT:
     franka_manager.set_to_init_pos()
 
 # Temp debug function to step through sim
 # def steps(n=10):
-def steps(n=1):
-    for _ in range(n):
+
+from enum import Enum, auto
+class StepRenderOpt(Enum):
+    NONE = auto()
+    ALL = auto()
+    LAST_FRAME = auto()
+
+def steps(n: int = 1, renderOption: StepRenderOpt = StepRenderOpt.ALL):
+    for i in range(n):
+
+        should_render = True
+        if renderOption == renderOption.NONE:
+            should_render = False
+        if renderOption == renderOption.LAST_FRAME and i < n-1:
+            should_render = False
+
         scene.step()
-        if SHOW_ROBOT:
-            franka_manager.step()
-        if SHOW_SCENE_CAMS:
+        if USE_ROBOT:
+            franka_manager.step(vis=should_render)
+        if SHOW_SCENE_CAMS and should_render:
             _ = ext_cam_1_left.render()
 
 print("Starting simulation.")
@@ -141,7 +156,7 @@ debug_bottle.set_pos([0.95, -2.55, 0.95])
 
 steps(5)
 
-if SHOW_ROBOT:
+if USE_ROBOT:
     from src.sim_utils.robot_pose_debug import RobotPoseDebug
     rD = RobotPoseDebug(franka_manager, scene, verbose=True)
 
@@ -324,7 +339,12 @@ try:
             # steps(5)
             # steps(25)
             # steps(10)  # LF_DEBUG run at about 50 hz
-            steps(33)  # LF_DEBUG run at about 15 hz
+            # steps(33)  # LF_DEBUG run at about 15 hz
+            if i == len(actions) - 1:
+                steps(n=33, renderOption=StepRenderOpt.LAST_FRAME)
+            else:
+                steps(n=33, renderOption=StepRenderOpt.NONE)
+
             act_end_time = scene.cur_t
             act_diff_time = act_end_time - act_start_time
 
@@ -335,6 +355,16 @@ try:
         chuck_act_end_time = scene.cur_t
         chuck_act_diff_time = chuck_act_end_time - chuck_act_start_time
         print(f"loop_step: {loop_step} | Done applying inference actions, took {chuck_act_diff_time:.3f} secs in sim time, {chuck_diff_wall_time:.3f} secs wall clock time")
+        """
+        Time to run all 8-actions
+        - (Sept. 13) > took 1.056 secs in sim time, 16.444 secs wall clock time
+        - (Sept. 13) > took 1.056 secs in sim time, 11.082 secs wall clock time
+            - Only rendering last-frame needed for next inference run
+        - (Sept. 13) > took 1.056 secs in sim time, 1.562 secs wall clock time
+            - Only rendering last-frame needed for next inference run
+            - + Don't show GUI Viewer
+        [ ] Try: run fully headless and record from two the two cams
+        """
 
 except KeyboardInterrupt:
     print("Simulation interrupted by user.")

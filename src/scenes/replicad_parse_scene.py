@@ -8,7 +8,7 @@ https://aihabitat.org/docs/habitat-sim/attributesJSON.html
 """
 
 # Path to ReplicaCAD dataset root
-DATASET_PATH = "/workspace/assets/haosulab-ReplicaCAD"
+DATASET_PATH = "/workspace/haosulab-ReplicaCAD"
 scene_name = "apt_0"  # choose your scene (e.g., "apt_0", etc.)
 scene_config_file = os.path.join(DATASET_PATH, "configs/scenes", f"{scene_name}.scene_instance.json")
 with open(scene_config_file, 'r') as f:

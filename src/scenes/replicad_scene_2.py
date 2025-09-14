@@ -69,28 +69,29 @@ def setup_scene():
     # )
         # Set up the simulation scene with a viewer
     scene = gs.Scene(
-        show_viewer=True,
-        viewer_options=gs.options.ViewerOptions(
-            res=(1280, 720),
-            camera_pos=(0.8, -1.0, 0.5),
-            camera_lookat=(0.5, 0.0, 0.2),
-            camera_fov=60,
-            max_FPS=60,
-        ),
-        rigid_options=gs.options.RigidOptions(
-            integrator=gs.integrator.implicitfast,
-            constraint_solver=gs.constraint_solver.Newton,
-            iterations=200,           # more constraint iterations
-            ls_iterations=50,
-            tolerance=1e-6,           # tighter convergence
-            contact_resolve_time=0.02 # MuJoCo time-constant; prevents spiky impulses
-            # enable_self_collision=False is already the default (good)
-        ),
+        show_viewer=False,
+        # viewer_options=gs.options.ViewerOptions(
+        #     res=(1280, 720),
+        #     camera_pos=(0.8, -1.0, 0.5),
+        #     camera_lookat=(0.5, 0.0, 0.2),
+        #     camera_fov=60,
+        #     # max_FPS=60,
+        #     max_FPS=24,
+        # ),
+        # rigid_options=gs.options.RigidOptions(
+        #     integrator=gs.integrator.implicitfast,
+        #     constraint_solver=gs.constraint_solver.Newton,
+        #     iterations=200,           # more constraint iterations
+        #     ls_iterations=50,
+        #     tolerance=1e-6,           # tighter convergence
+        #     contact_resolve_time=0.02 # MuJoCo time-constant; prevents spiky impulses
+        #     # enable_self_collision=False is already the default (good)
+        # ),
         show_FPS = False,  # Don't print live FPS
         # sim_options=gs.options.SimOptions(dt=0.01),  # simulation time-step 10ms, Defaults to 1e-2
         sim_options=gs.options.SimOptions(
-            dt=0.002,  # 2ms step, mainly for the gripper stability
-            # dt=0.01,
+            # dt=0.002,  # 2ms step, mainly for the gripper stability
+            dt=0.004,
             # substeps=20,
             requires_grad=False,
         ),
