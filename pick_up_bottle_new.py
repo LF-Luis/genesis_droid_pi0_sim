@@ -36,6 +36,7 @@ RUN_PI0 = True
 # task_prompt = "grab the yellow bottle from its center and move it to the corner of the table"
 # task_prompt = "Grab the yellow bottle from its center and place it into the bowl"
 task_prompt = "Place the plastic bottle into the bowl."
+# task_prompt = "Do nothing."  # Doesn't work!
 
 # Initialize link to OpenPi model, locally hosted
 if RUN_PI0:
@@ -334,7 +335,8 @@ try:
                 gripper_target = np.pi / 4  # ~45° in radians, closed
             else:
                 gripper_target = 0.0       # open
-            franka_act = np.hstack([arm_targets, [gripper_target], [gripper_target]])
+            # franka_act = np.hstack([arm_targets, [gripper_target], [gripper_target]])
+            franka_act = np.hstack([arm_targets, [gripper_target]])
             franka_manager.set_joints_and_gripper_pos(franka_act)
             ###############################################
             ###############################################
@@ -366,8 +368,10 @@ try:
         - (Sept. 13) > took 1.056 secs in sim time, 11.082 secs wall clock time
             - Only rendering last-frame needed for next inference run
         - (Sept. 13) > took 1.056 secs in sim time, 1.562 secs wall clock time
-            - Only rendering last-frame needed for next inference run
+            - Only render frame needed for model inference
             - + Don't show GUI Viewer
+        - (Sept. 14) > took 2.640 secs in sim time, 2.017 secs wall clock time
+            - MUJOCO XML fixes
         [ ] Try: run fully headless and record from two the two cams
         """
 

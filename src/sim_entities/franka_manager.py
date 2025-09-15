@@ -27,6 +27,7 @@ class FrankaManager:
             material=gs.materials.Rigid(
                 friction=0.3,  # Lower friction for robot
                 coup_restitution=0.0,  # No bouncing during coupling
+                # gravity_compensation=1.0,  # Needed to use DROID setup kp/kv values
             ),
             surface=gs.surfaces.Default(vis_mode="visual"),
             # surface=gs.surfaces.Default(vis_mode="collision"),
@@ -51,6 +52,40 @@ class FrankaManager:
 
     def _set_control_params(self):
         # Setting control parameters
+
+        # Joint damping source: https://github.com/droid-dataset/droid/blob/main/config/panda/franka_panda.yaml
+        # Gripper stayed as default
+        # JOINT_DAMPING = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1., 1.]
+        JOINT_DAMPING = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1.]
+
+        # https://github.com/droid-dataset/droid/blob/main/config/panda/franka_hardware.yaml
+        """
+        Another approach is to use these values and don't use `gravity_compensation=1.0` at all, just multiply these values by ~x100
+        POSITIONAL_GAINS = [40, 30, 50, 25, 35, 25, 10, ]
+        VELOCITY_GAINS = [ 4, 6, 5, 5, 3, 2, 1]
+        """
+        # # Gripper stayed as default
+        # POSITIONAL_GAINS = [40., 30., 50., 25., 35., 25., 10., 100., 100.]
+        # VELOCITY_GAINS = [ 4., 6., 5., 5., 3., 2., 1., 10., 10.]
+
+        # Once multiplied by 100, gripper will have default values
+        # POSITIONAL_GAINS = [40., 30., 50., 25., 35., 25., 10., 1., 1.]
+        # VELOCITY_GAINS = [ 4., 6., 5., 5., 3., 2., 1., .1, .1]
+        POSITIONAL_GAINS = [40., 30., 50., 25., 35., 25., 10., 1.]
+        VELOCITY_GAINS = [ 4., 6., 5., 5., 3., 2., 1., .1]
+        POSITIONAL_GAINS = [x*100 for x in POSITIONAL_GAINS]
+        VELOCITY_GAINS = [x*100 for x in VELOCITY_GAINS]
+        print(f"POSITIONAL_GAINS: {POSITIONAL_GAINS}")
+        print(f"VELOCITY_GAINS: {VELOCITY_GAINS}")
+        self._franka.set_dofs_damping(damping=JOINT_DAMPING, dofs_idx_local=self.dofs_idx)
+
+        # Gripper values stayed as default
+        # FORCE_RANGES_LOWER = [-86., -86., -86., -86., -11.5, -11.5, -11.5, -5., -100.]
+        # FORCE_RANGES_UPPER = [86., 86., 86., 86., 11.5, 11.5, 11.5, 5., 100.]
+        FORCE_RANGES_LOWER = [-86., -86., -86., -86., -11.5, -11.5, -11.5, -5.]
+        FORCE_RANGES_UPPER = [86., 86., 86., 86., 11.5, 11.5, 11.5, 5.]
+        self._franka.set_dofs_force_range(FORCE_RANGES_LOWER, FORCE_RANGES_UPPER, self.dofs_idx)
+
         pass
         # self._franka.set_dofs_kp(PROPORTIONAL_GAINS, self.dofs_idx)
         # self._franka.set_dofs_kv(VELOCITY_GAINS, self.dofs_idx)

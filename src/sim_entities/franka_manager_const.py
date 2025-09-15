@@ -11,6 +11,24 @@ from src.sim_utils.transformations import quaternion_multiply
 Constants for frank_manager.py
 """
 
+"""
+# Default values:
+control_force: [  5.0601, -47.4055,   5.2450,   5.3185,   4.6303,   3.9862,  -4.4536, 5.0000,   5.5084]
+force:         [  5.4026, -25.7310,   6.4325, -20.1323,   4.0697,   0.7747,  -5.8155, 4.9978,   4.9994]
+velocity:      [-0.0843,  0.8514, -0.1549,  1.1063, -0.4745, -0.1840,  0.5814,  0.0724, -0.0094]
+position:      [-0.1910, -0.1941,  0.0807, -2.1377, -0.0927,  2.2873,  1.0683,  0.3167, 0.7313]
+kp:            [4500., 4500., 3500., 3500., 2000., 2000., 2000.,  100.,  100.]
+kv:            [450., 450., 350., 350., 200., 200., 200.,  10.,  10.]
+force_range:   [ -87.,  -87.,  -87.,  -87.,  -12.,  -12.,  -12.,   -5., -100.]
+               [ 87.,  87.,  87.,  87.,  12.,  12.,  12.,   5., 100.]
+limit:         [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973,  0.0000, 0.0000]
+               [ 2.8973,  1.7628,  2.8973, -0.0698,  2.8973,  3.7525,  2.8973,  0.9000, 0.9000]
+stiffness:     [0., 0., 0., 0., 0., 0., 0., 0., 0.]
+invweight:     [  5.5849,   0.9654,   6.7990,   3.9120,   7.7889,   6.4168,   9.5317, 199.2300, 199.2303]
+armature:      [0.1000, 0.1000, 0.1000, 0.1000, 0.1000, 0.1000, 0.1000, 0.0050, 0.0050]
+damping:       [1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.1000, 0.1000]
+"""
+
 """ ORIGinal values
 MUJOCO_FILE = "xml/franka_emika_panda/panda.xml"
 # BASE_POS = (0, 0, 0)
@@ -44,7 +62,8 @@ BASE_POS = [0., -0.8, 0.]
 # BASE_POS = [0., 0, 0.]
 # Robot joints: 7 arm joints + 1 gripper driver actuator-joint
 # BUG: Should be able to actuate with just the "left_driver_joint" joint, but maybe the Mujoco file or Genesis parser is off -- need to use "right_driver_joint" as well.
-JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint", "right_driver_joint"]
+# JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint", "right_driver_joint"]
+JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "left_driver_joint"]
 END_EFFECTOR_NAME = "base"
 # Links PD gains
 PROPORTIONAL_GAINS = np.array([400, 400, 400, 400, 400, 400, 400,   15,   15])
@@ -53,8 +72,10 @@ VELOCITY_GAINS     = np.array([ 80,  80,  80,  80,  80,  80,  80,    5,    5])
 FORCE_RANGES_LOWER = np.array([-87, -87, -87, -87, -12, -12, -12, -120, -120])
 FORCE_RANGES_UPPER = np.array([ 87,  87,  87,  87,  12,  12,  12,  120,  120])
 
-rest_pose = [-0.13935425877571106, -0.020481698215007782, -0.05201413854956627, -2.0691256523132324, 0.05058913677930832, 2.0028650760650635, -0.9167874455451965, 0., 0.]
-HOME_POS = rest_pose
+# REST_POSE source: https://github.com/droid-dataset/droid/blob/main/config/panda/franka_panda.yaml
+# REST_POSE = [-0.13935425877571106, -0.020481698215007782, -0.05201413854956627, -2.0691256523132324, 0.05058913677930832, 2.0028650760650635, -0.9167874455451965, 0., 0.]
+REST_POSE = [-0.13935425877571106, -0.020481698215007782, -0.05201413854956627, -2.0691256523132324, 0.05058913677930832, 2.0028650760650635, -0.9167874455451965, 0.]
+HOME_POS = REST_POSE
 # HOME_POS = np.array([
 #     0.0,
 #     -1 / 5 * np.pi,

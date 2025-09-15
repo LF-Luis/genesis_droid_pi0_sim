@@ -90,7 +90,7 @@ uv run scripts/serve_policy.py policy:checkpoint \
             --exclude '.git*' --exclude 'venv' --exclude '__pycache__' \
             -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
             "$PWD" \
-            ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com:/home/ubuntu/dev/
+            ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com:/home/ubuntu/dev/
         ```
         ```bash
         # In Genesis-e064db dir:
@@ -125,30 +125,30 @@ uv run scripts/serve_policy.py policy:checkpoint \
 Copying to openpi dir, which is mounted inside of
 ```bash
 # Restart GNOME and DCV server
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com 'sudo systemctl restart gdm3 && sudo systemctl restart dcvserver'
 # Start DCV session on Macbook
-ec2-44-200-228-145.compute-1.amazonaws.com:8443#console
+ec2-98-86-147-192.compute-1.amazonaws.com:8443#console
 
 # Rsync code # Move ReplicCAD assets
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' --delete \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD" \
-    ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com:/home/ubuntu/dev/
+    ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com:/home/ubuntu/dev/
 
 rsync -avz --progress \
     --exclude '.git*' --exclude 'venv' --exclude '__pycache__' --delete \
     -e "ssh -i ~/.ssh/aws-us-east-1.pem" \
     "$PWD/" \
-    ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/dev/
+    ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com:/home/ubuntu/Desktop/Genesis-e064dbc/dev/
 ```
 
 **More automated:**
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com
 sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
-# Enter desktop using DCV: ec2-44-200-228-145.compute-1.amazonaws.com:8443#console, then move on to next steps
+# Enter desktop using DCV: ec2-98-86-147-192.compute-1.amazonaws.com:8443#console, then move on to next steps
 # ./enter_genesis.sh
 ./Desktop/Genesis-main/openpi/enter_genesis.sh
 python openpi/pick_up_bottle.py
@@ -156,9 +156,9 @@ python openpi/pick_up_bottle.py
 
 ```bash
 # Run through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com
 # Not needed anymore: sudo systemctl restart gdm3 && sudo systemctl restart dcvserver
-# Enter desktop using DCV: ec2-44-200-228-145.compute-1.amazonaws.com:8443#console, then move on to next steps
+# Enter desktop using DCV: ec2-98-86-147-192.compute-1.amazonaws.com:8443#console, then move on to next steps
 who  # get user DISPLAY, e.g. ":1"
 export DISPLAY=:1
 xhost +local:root
@@ -167,7 +167,7 @@ docker start genesis-66708b
 docker start openpi_jointpos_b84cc7
 docker exec -it genesis-66708b /bin/bash
 
-ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com
 docker exec -it openpi_jointpos_b84cc7 /bin/bash
 uv run scripts/serve_policy.py policy:checkpoint \
     --policy.config=pi0_fast_droid_jointpos \
@@ -179,7 +179,7 @@ python pick_up_bottle.py
 
 ```bash
 # Proxy through ssh
-ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-44-200-228-145.compute-1.amazonaws.com
+ssh -i ~/.ssh/aws-us-east-1.pem -L 8443:localhost:8443 ubuntu@ec2-98-86-147-192.compute-1.amazonaws.com
 # Start DCV session on Macbook
 localhost:8443
 ```
@@ -199,6 +199,7 @@ IPython.embed()
 ```
 
 ### Resources
+- [Code and config for setting the DROID robot platform](https://github.com/droid-dataset/droid)
 - [Deepmind's mujoco_menagerie](https://github.com/google-deepmind/mujoco_menagerie), open-source robot sim assets
 - [Evaluation and discussion of π0-FAST-DROID model](https://penn-pal-lab.github.io/Pi0-Experiment-in-the-Wild/)
 
